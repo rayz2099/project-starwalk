@@ -1,0 +1,22 @@
+# Stargazing Planner 单服务部署
+# why: 业务无状态，单容器即可；端口对外通过 PORT 环境变量映射
+
+services:
+  starwalk:
+    image: dt-smn:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: starwalk
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

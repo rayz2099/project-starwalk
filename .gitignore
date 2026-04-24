@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+dist
+.env*
+.DS_Store
+*.log
+bun.lock
+bun.lockb
+.turbo

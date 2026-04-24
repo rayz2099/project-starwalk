@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn/ui 主题变量，深色优先 */
+@layer base {
+  :root {
+    --background: 220 25% 6%;
+    --foreground: 210 40% 96%;
+    --card: 220 22% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 220 22% 9%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 210 90% 60%;
+    --primary-foreground: 220 25% 6%;
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 220 16% 14%;
+    --muted-foreground: 215 18% 65%;
+    --accent: 220 16% 18%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 16% 18%;
+    --input: 220 16% 18%;
+    --ring: 210 90% 60%;
+    --radius: 0.6rem;
+
+    /* 评分语义色 */
+    --rating-excellent: 142 70% 45%;
+    --rating-fair: 42 95% 55%;
+    --rating-poor: 0 75% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}

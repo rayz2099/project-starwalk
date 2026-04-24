@@ -1,0 +1,16 @@
+# public 目录 standalone 输出可能为空，预先创建占位避免 COPY 失败
+node_modules
+.next
+.git
+.DS_Store
+*.log
+bun.lockb
+.dockerignore
+Dockerfile
+docker-compose.yml
+justfile
+script
+README.md
+todolist.md
+AGENTS.md
+tests
