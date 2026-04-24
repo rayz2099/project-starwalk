@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { LOCATION_GROUPS, LOCATIONS } from "@/config/locations";
 import { aggregateNightForDate } from "@/features/stargazing/server/aggregate";
 import { scoreNight } from "@/features/stargazing/server/scoring";
 import type { OpenMeteoHourlyResponse } from "@/features/stargazing/server/open-meteo";
@@ -76,24 +77,54 @@ function agg(o: Partial<NightlyAggregation>): NightlyAggregation {
 
 describe("scoreNight 评分顺序", () => {
   test("月亮过亮直接 POOR", () => {
-    const r = scoreNight(agg({}), moon(0.8));
+    const r = scoreNight(agg({}), moon(0.8), 3);
     expect(r.level).toBe("POOR");
   });
   test("月暗云高 POOR", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 65, cloudCoverMax: 80 }), moon(0.1));
+    const r = scoreNight(agg({ cloudCoverAvg: 65, cloudCoverMax: 80 }), moon(0.1), 3);
     expect(r.level).toBe("POOR");
   });
   test("云薄月暗 EXCELLENT", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1));
+    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 3);
     expect(r.level).toBe("EXCELLENT");
   });
   test("温露差小 FAIR + 风险", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 30, cloudCoverMax: 40, minDewPointSpread: 1 }), moon(0.4));
+    const r = scoreNight(agg({ cloudCoverAvg: 30, cloudCoverMax: 40, minDewPointSpread: 1 }), moon(0.4), 3);
     expect(r.level).toBe("FAIR");
     expect(r.risks.some((x) => x.includes("结露"))).toBe(true);
   });
   test("普通条件 FAIR", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4));
+    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 3);
     expect(r.level).toBe("FAIR");
+  });
+  test("中度光污染会把 EXCELLENT 压到 FAIR，并保留原始值说明", () => {
+    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 5);
+    expect(r.level).toBe("FAIR");
+    expect(r.reason).toContain("光污染");
+    expect(r.risks.some((x) => x.includes("B5"))).toBe(true);
+  });
+  test("重度光污染会把 FAIR 进一步压到 POOR", () => {
+    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 6);
+    expect(r.level).toBe("POOR");
+    expect(r.reason).toContain("光污染");
+  });
+});
+
+describe("locations 分组与静态光污染基线", () => {
+  test("地点分组固定为江浙、广东沿海、云南", () => {
+    expect(LOCATION_GROUPS.map((group) => group.label)).toEqual(["江浙", "广东沿海", "云南"]);
+  });
+
+  test("每个分组地点数量符合预期，且都带有静态光污染原始值", () => {
+    const counts = LOCATIONS.reduce<Record<string, number>>((acc, location) => {
+      acc[location.groupId] = (acc[location.groupId] ?? 0) + 1;
+      expect(location.lightPollutionBortle).toBeGreaterThanOrEqual(1);
+      expect(location.lightPollutionBortle).toBeLessThanOrEqual(9);
+      return acc;
+    }, {});
+
+    expect(counts.jiangzhe).toBe(10);
+    expect(counts.guangdongCoast).toBe(5);
+    expect(counts.yunnan).toBe(5);
   });
 });

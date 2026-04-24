@@ -16,19 +16,25 @@ resolve_version() {
 main() {
   local version
   local remote_image
+  local latest_image
 
   version="$(resolve_version)"
   remote_image="${REMOTE_IMAGE_REPOSITORY}:${version}"
+  latest_image="${REMOTE_IMAGE_REPOSITORY}:latest"
 
   printf '[build-image] version=%s\n' "${version}"
   printf '[build-image] local_image=%s\n' "${LOCAL_IMAGE}"
   printf '[build-image] remote_image=%s\n' "${remote_image}"
+  printf '[build-image] latest_image=%s\n' "${latest_image}"
 
   cd "${ROOT_DIR}"
 
   docker build -t "${LOCAL_IMAGE}" .
   docker tag "${LOCAL_IMAGE}" "${remote_image}"
+  docker tag "${LOCAL_IMAGE}" "${latest_image}"
   docker push "${remote_image}"
+  # latest 默认随版本一起推：方便运维直接 pull :latest，避免每次手工同步
+  docker push "${latest_image}"
 }
 
 main "$@"

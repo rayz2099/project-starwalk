@@ -54,26 +54,26 @@ export function PlannerPage({ initialValue, initialMatrix, initialError }: Props
       <ControlPanel value={value} loading={pending} onSubmit={submit} />
 
       {error ? (
-        <div className="rounded-lg border border-rating-poor/40 bg-rating-poor/10 p-4 text-sm text-rating-poor">
+        <div className="rounded-xl border border-rating-poor/40 bg-rating-poor/10 p-4 text-sm text-rating-poor">
           矩阵生成失败：{error}
         </div>
       ) : null}
 
       {pending && !matrix ? (
-        <div className="rounded-lg border border-border bg-card/40 p-8 text-center text-muted-foreground">
+        <div className="glass-panel p-10 text-center text-muted-foreground animate-pulse">
           正在拉取天气并计算评分…
         </div>
       ) : null}
 
       {matrix ? (
-        <div className="rounded-lg border bg-card/30 p-2 overflow-x-auto">
+        <div className="glass-panel p-3 overflow-x-auto">
           <PlannerMatrixView matrix={matrix} />
-          <p className="text-[11px] text-muted-foreground p-2">
-            生成时间 {formatTs(matrix.generatedAtUtcMs)} · 数据源 Open-Meteo · 月相 suncalc
+          <p className="text-[11px] text-muted-foreground p-2 tabular-nums">
+            生成时间 {formatTs(matrix.generatedAtUtcMs)} · 数据源 Open-Meteo · 月相 suncalc · 光污染静态基线
           </p>
         </div>
       ) : !pending && !error ? (
-        <div className="rounded-lg border border-dashed bg-card/20 p-8 text-center text-muted-foreground">
+        <div className="glass-panel border-dashed p-10 text-center text-muted-foreground">
           请选择日期范围与地点后查看矩阵
         </div>
       ) : null}

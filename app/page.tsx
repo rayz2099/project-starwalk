@@ -27,11 +27,17 @@ export default async function Page() {
   }
 
   return (
-    <main className="container mx-auto py-6 space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Stargazing Planner</h1>
+    <main className="container mx-auto py-8 space-y-6">
+      <header className="flex flex-col gap-2">
+        <div className="inline-flex items-center gap-2 self-start rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Stargazing · Beta
+        </div>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          多地点 × 多日期 观星条件矩阵
+        </h1>
         <p className="text-sm text-muted-foreground">
-          多地点 × 多日期 观星条件对比矩阵 · 服务端聚合 · 月相离线计算
+          服务端聚合 Open-Meteo 逐小时云量与温露点 · 月相由 suncalc 离线计算 · 光污染采用静态地点基线
         </p>
       </header>
       <PlannerPage

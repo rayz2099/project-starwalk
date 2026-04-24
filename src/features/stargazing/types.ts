@@ -1,12 +1,25 @@
+// 地点分组：why：页面核心是跨区域横向比较，分组是信息组织主维度
+export type LocationGroupId = "jiangzhe" | "guangdongCoast" | "yunnan";
+
+// 分组静态配置
+export interface LocationGroupConfig {
+  id: LocationGroupId;
+  label: string;
+  description: string;
+}
+
 // 地点静态配置
 export interface LocationConfig {
   id: string;
   name: string;
+  groupId: LocationGroupId;
   latitude: number;
   longitude: number;
   elevation: number;
   // IANA 时区名，用于将 UTC 小时数据切回本地夜间窗口
   timezone: string;
+  // Bortle 1~9，why：光污染是地点长期属性，适合放到静态配置里
+  lightPollutionBortle: number;
 }
 
 // 评分枚举

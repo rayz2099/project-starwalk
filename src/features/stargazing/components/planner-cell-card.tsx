@@ -1,11 +1,14 @@
 "use client";
 
+import { Cloud, Droplets, Thermometer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import type { MatrixCell } from "@/features/stargazing/types";
+import { getLightPollutionSummary, getLightPollutionTier } from "@/features/stargazing/light-pollution";
+import { cn } from "@/lib/utils";
+import type { LocationConfig, MatrixCell } from "@/features/stargazing/types";
 
 interface Props {
   cell: MatrixCell;
+  location: LocationConfig;
 }
 
 function ratingVariant(level: string | undefined) {
@@ -22,60 +25,92 @@ function ratingLabel(level: string | undefined) {
   return "无数据";
 }
 
-export function PlannerCellCard({ cell }: Props) {
+// 评级 → 卡片左侧色条颜色，避免大块染色干扰主体阅读
+function ratingBarClass(level: string | undefined) {
+  if (level === "EXCELLENT") return "bg-rating-excellent";
+  if (level === "FAIR") return "bg-rating-fair";
+  if (level === "POOR") return "bg-rating-poor";
+  return "bg-border";
+}
+
+// 光污染文字颜色：why：给长期背景值稳定着色，不污染 nightly 评分主色
+function lightPollutionTextClass(bortle: number): string {
+  const tier = getLightPollutionTier(bortle);
+  if (tier === "dark") return "text-emerald-300";
+  if (tier === "moderate") return "text-amber-300";
+  return "text-rose-300";
+}
+
+export function PlannerCellCard({ cell, location }: Props) {
   const { aggregation, rating, moon, error } = cell;
+  const tooltip = [rating?.reason, ...(rating?.risks ?? [])].filter(Boolean).join(" · ");
 
   return (
-    <Card className="bg-background/40 border-border/60">
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <Badge variant={ratingVariant(rating?.level)}>{ratingLabel(rating?.level)}</Badge>
-          <span className="text-xs text-muted-foreground" title={moon.phaseLabel}>
-            {moon.phaseIcon} {(moon.illumination * 100).toFixed(0)}%
+    <div
+      className={cn(
+        "relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card/60 p-3",
+        "shadow-[0_1px_0_hsl(var(--border)/0.5)] transition-colors hover:bg-card/90"
+      )}
+      title={tooltip || undefined}
+    >
+      <span
+        aria-hidden
+        className={cn("absolute inset-y-0 left-0 w-[3px]", ratingBarClass(rating?.level))}
+      />
+
+      <div className="flex items-center justify-between gap-2 pl-1">
+        <Badge variant={ratingVariant(rating?.level)}>{ratingLabel(rating?.level)}</Badge>
+        <span
+          className="whitespace-nowrap text-xs tabular-nums text-muted-foreground"
+          title={moon.phaseLabel}
+        >
+          {moon.phaseIcon} {(moon.illumination * 100).toFixed(0)}%
+        </span>
+      </div>
+
+      <div className="pl-1">
+        <span
+          className={cn(
+            "text-[11px] font-medium tabular-nums",
+            lightPollutionTextClass(location.lightPollutionBortle)
+          )}
+          title="静态光污染基线（Bortle）"
+        >
+          光污染 {getLightPollutionSummary(location.lightPollutionBortle)}
+        </span>
+      </div>
+
+      {aggregation ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-1 text-xs tabular-nums">
+          <span className="inline-flex items-center gap-1" title="云量均值 / 峰值 / 高云均值">
+            <Cloud className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{Math.round(aggregation.cloudCoverAvg)}%</span>
+            <span className="text-muted-foreground">↑{Math.round(aggregation.cloudCoverMax)}</span>
+          </span>
+          <span className="inline-flex items-center gap-1" title="夜间最低气温">
+            <Thermometer className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{aggregation.minTemperature.toFixed(0)}°</span>
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1",
+              aggregation.minDewPointSpread < 2 && "text-rating-poor"
+            )}
+            title="最小温露点差，<2°C 易起雾结露"
+          >
+            <Droplets className="h-3 w-3 shrink-0" />
+            <span className="font-medium">Δ{aggregation.minDewPointSpread.toFixed(1)}°</span>
           </span>
         </div>
+      ) : (
+        <p className="pl-1 text-xs text-rating-poor">{error ?? "无数据"}</p>
+      )}
 
-        {aggregation ? (
-          <dl className="text-xs grid grid-cols-2 gap-x-2 gap-y-1">
-            <dt className="text-muted-foreground">云均</dt>
-            <dd className="text-right">{Math.round(aggregation.cloudCoverAvg)}%</dd>
-            <dt className="text-muted-foreground">云峰</dt>
-            <dd className="text-right">{Math.round(aggregation.cloudCoverMax)}%</dd>
-            <dt className="text-muted-foreground">高云</dt>
-            <dd className="text-right">{Math.round(aggregation.cloudCoverHighAvg)}%</dd>
-            <dt className="text-muted-foreground">最低温</dt>
-            <dd className="text-right">{aggregation.minTemperature.toFixed(1)}°C</dd>
-            <dt className="text-muted-foreground">温露差</dt>
-            <dd
-              className={
-                aggregation.minDewPointSpread < 2 ? "text-right text-rating-poor" : "text-right"
-              }
-            >
-              {aggregation.minDewPointSpread.toFixed(1)}°C
-            </dd>
-          </dl>
-        ) : (
-          <p className="text-xs text-rating-poor">{error ?? "无数据"}</p>
-        )}
-
-        {rating?.reason ? (
-          <p className="text-[11px] text-muted-foreground leading-snug">{rating.reason}</p>
-        ) : null}
-
-        {rating?.risks?.length ? (
-          <ul className="text-[11px] text-rating-fair space-y-0.5">
-            {rating.risks.map((r, i) => (
-              <li key={i}>• {r}</li>
-            ))}
-          </ul>
-        ) : null}
-
-        {!aggregation?.complete && aggregation ? (
-          <p className="text-[10px] text-muted-foreground">
-            数据不完整 ({aggregation.hoursCovered}/8h)
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
+      {!aggregation?.complete && aggregation ? (
+        <p className="pl-1 text-[10px] text-muted-foreground">
+          数据不完整 {aggregation.hoursCovered}/8h
+        </p>
+      ) : null}
+    </div>
   );
 }

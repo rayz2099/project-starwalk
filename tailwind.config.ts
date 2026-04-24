@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss";
 
-// 暗色优先 + shadcn/ui token 配色，避免在组件层散落颜色
+// 主题跟随系统：darkMode 走 media 查询，CSS 变量在 globals.css 里按 prefers-color-scheme 切换
 const config: Config = {
-  darkMode: "class",
+  darkMode: "media",
   content: [
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}"

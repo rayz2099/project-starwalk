@@ -58,7 +58,7 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
           error: "夜间窗口数据为空"
         };
       }
-      const rating = scoreNight(agg, moon);
+      const rating = scoreNight(agg, moon, location.lightPollutionBortle);
       return {
         locationId: location.id,
         businessDate: d,

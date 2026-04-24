@@ -14,6 +14,14 @@ export const RATING_THRESHOLDS = {
   dewPointSpreadFair: 2 // °C
 } as const;
 
+// 光污染阈值：why：让光污染只做静态修正，不取代天气/月相作为首要决策因子
+export const LIGHT_POLLUTION_THRESHOLDS = {
+  darkSkyMax: 3,
+  excellentCapMax: 4,
+  downgradeMax: 5,
+  forcePoorMin: 6
+} as const;
+
 // 默认日期范围（业务日数）
 export const DEFAULT_DATE_RANGE_DAYS = 7;
 // 上限

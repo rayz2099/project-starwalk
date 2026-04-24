@@ -2,34 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-/* shadcn/ui 主题变量，深色优先 */
+/*
+ * 主题策略：
+ * - 默认（:root）= 亮色，避免夜间设计噪音影响白天阅读
+ * - prefers-color-scheme: dark 时整体切换到暗色，跟随系统
+ * - 评分语义色（excellent/fair/poor）两套主题都校准过，保证可读性
+ */
 @layer base {
   :root {
-    --background: 220 25% 6%;
-    --foreground: 210 40% 96%;
-    --card: 220 22% 9%;
-    --card-foreground: 210 40% 96%;
-    --popover: 220 22% 9%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 210 90% 60%;
-    --primary-foreground: 220 25% 6%;
-    --secondary: 220 16% 18%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 220 16% 14%;
-    --muted-foreground: 215 18% 65%;
-    --accent: 220 16% 18%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 16% 18%;
-    --input: 220 16% 18%;
-    --ring: 210 90% 60%;
-    --radius: 0.6rem;
+    --background: 220 30% 97%;
+    --foreground: 222 35% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 35% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 35% 12%;
+    --primary: 222 80% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 222 35% 18%;
+    --muted: 220 20% 94%;
+    --muted-foreground: 220 12% 42%;
+    --accent: 222 80% 95%;
+    --accent-foreground: 222 80% 30%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 222 80% 52%;
+    --radius: 0.75rem;
 
-    /* 评分语义色 */
-    --rating-excellent: 142 70% 45%;
-    --rating-fair: 42 95% 55%;
-    --rating-poor: 0 75% 58%;
+    --rating-excellent: 152 65% 38%;
+    --rating-fair: 32 88% 45%;
+    --rating-poor: 0 72% 50%;
+
+    /* 背景渐变控制点 */
+    --bg-glow-1: 222 80% 95%;
+    --bg-glow-2: 270 70% 95%;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 224 35% 6%;
+      --foreground: 210 30% 96%;
+      --card: 224 28% 10%;
+      --card-foreground: 210 30% 96%;
+      --popover: 224 28% 10%;
+      --popover-foreground: 210 30% 96%;
+      --primary: 210 95% 65%;
+      --primary-foreground: 224 35% 8%;
+      --secondary: 224 20% 16%;
+      --secondary-foreground: 210 30% 96%;
+      --muted: 224 20% 14%;
+      --muted-foreground: 215 18% 65%;
+      --accent: 224 25% 18%;
+      --accent-foreground: 210 30% 96%;
+      --destructive: 0 70% 55%;
+      --destructive-foreground: 210 40% 98%;
+      --border: 224 20% 18%;
+      --input: 224 20% 18%;
+      --ring: 210 95% 65%;
+
+      --rating-excellent: 152 65% 50%;
+      --rating-fair: 42 95% 60%;
+      --rating-poor: 0 75% 62%;
+
+      --bg-glow-1: 222 80% 14%;
+      --bg-glow-2: 270 60% 14%;
+    }
   }
 }
 
@@ -40,5 +79,20 @@
   html,
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  /* 全站背景轻微的星空感径向渐变，亮/暗主题各自配色 */
+  body {
+    background-image:
+      radial-gradient(800px 400px at 12% -10%, hsl(var(--bg-glow-1) / 0.65), transparent 60%),
+      radial-gradient(700px 380px at 92% 0%, hsl(var(--bg-glow-2) / 0.55), transparent 65%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  /* 玻璃质感容器：通过 card 变量同时适配亮/暗 */
+  .glass-panel {
+    @apply rounded-2xl border bg-card/70 shadow-sm backdrop-blur-md;
+    border-color: hsl(var(--border) / 0.7);
   }
 }
