@@ -16,6 +16,11 @@ export const LOCATION_GROUPS: LocationGroupConfig[] = [
     id: "yunnan",
     label: "云南",
     description: "以滇西北高海拔、低光害候选点为主"
+  },
+  {
+    id: "search",
+    label: "搜索地点",
+    description: "由全国地址搜索临时加入的观测点"
   }
 ];
 

@@ -1,6 +1,7 @@
 import { LOCATIONS } from "@/config/locations";
 import { MAX_DATE_RANGE_DAYS } from "../constants";
 import type {
+  LocationConfig,
   MatrixCell,
   MatrixRow,
   PlannerInput,
@@ -10,6 +11,7 @@ import { fetchHourlyBatch } from "./open-meteo";
 import { computeMoonForBusinessDate } from "./moon";
 import { aggregateNightForDate } from "./aggregate";
 import { scoreNight } from "./scoring";
+import { analyzeNightWindow } from "./window-analysis";
 
 // 应用服务层：唯一暴露给页面层的入口
 // 接收输入，吐出可直接渲染的矩阵 DTO
@@ -21,7 +23,9 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
   if (dates.length > MAX_DATE_RANGE_DAYS) {
     throw new Error(`日期范围过大：最多支持 ${MAX_DATE_RANGE_DAYS} 天`);
   }
-  const locations = LOCATIONS.filter((l) => input.locationIds.includes(l.id));
+  const customLocations = input.customLocations ?? [];
+  const allLocations = dedupeLocations([...LOCATIONS, ...customLocations]);
+  const locations = allLocations.filter((l) => input.locationIds.includes(l.id));
   if (locations.length === 0) {
     throw new Error("未选择任何地点");
   }
@@ -39,6 +43,7 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
           locationId: location.id,
           businessDate: d,
           aggregation: null,
+          windowAnalysis: null,
           moon: computeMoonForBusinessDate(location, d),
           rating: null,
           error: result && !result.ok ? result.error : "未知错误"
@@ -48,21 +53,24 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
     const cells = dates.map<MatrixCell>((d) => {
       const moon = computeMoonForBusinessDate(location, d);
       const agg = aggregateNightForDate(result.hourly, d, location.timezone);
+      const analysis = analyzeNightWindow(result.hourly, d, location, moon);
       if (agg.hoursCovered === 0) {
         return {
           locationId: location.id,
           businessDate: d,
           aggregation: null,
+          windowAnalysis: null,
           moon,
           rating: null,
           error: "夜间窗口数据为空"
         };
       }
-      const rating = scoreNight(agg, moon, location.lightPollutionBortle);
+      const rating = scoreNight(agg, moon, location.lightPollutionBortle, analysis);
       return {
         locationId: location.id,
         businessDate: d,
         aggregation: agg,
+        windowAnalysis: analysis,
         moon,
         rating,
         error: agg.complete ? undefined : `夜间小时不完整 (${agg.hoursCovered}/8)`
@@ -76,6 +84,11 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
     rows,
     generatedAtUtcMs: Date.now()
   };
+}
+
+// 静态地点和搜索地点合并时按 id 去重，why：同一搜索结果多次固定不能让矩阵重复出行
+function dedupeLocations(locations: LocationConfig[]): LocationConfig[] {
+  return Array.from(new Map(locations.map((location) => [location.id, location])).values());
 }
 
 // 枚举 yyyy-MM-dd 闭区间

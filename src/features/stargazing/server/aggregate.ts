@@ -20,17 +20,7 @@ export function aggregateNightForDate(
   const windowStartUtcMs = localMidnightUtcMs(businessDate, timezone) + NIGHT_WINDOW_START_HOUR * 3600_000;
   const windowEndUtcMs = localMidnightUtcMs(nextDay, timezone) + NIGHT_WINDOW_END_HOUR * 3600_000;
 
-  const idxs: number[] = [];
-  for (let i = 0; i < hourly.time.length; i++) {
-    const t = hourly.time[i]; // "yyyy-MM-ddTHH:mm"
-    const datePart = t.slice(0, 10);
-    const hour = Number(t.slice(11, 13));
-    if (datePart === businessDate && hour >= NIGHT_WINDOW_START_HOUR) {
-      idxs.push(i);
-    } else if (datePart === nextDay && hour < NIGHT_WINDOW_END_HOUR) {
-      idxs.push(i);
-    }
-  }
+  const idxs = collectNightHourIndexes(hourly, businessDate);
 
   const hoursCovered = idxs.length;
   if (hoursCovered === 0) {
@@ -83,6 +73,26 @@ export function aggregateNightForDate(
     minTemperature: tempMin,
     minDewPointSpread: spreadMin
   };
+}
+
+// 统一夜间小时索引，why：聚合与最佳窗口分析必须使用完全相同的业务夜晚切片
+export function collectNightHourIndexes(
+  hourly: OpenMeteoHourlyResponse,
+  businessDate: string
+): number[] {
+  const nextDay = addDays(businessDate, 1);
+  const idxs: number[] = [];
+  for (let i = 0; i < hourly.time.length; i++) {
+    const t = hourly.time[i]; // "yyyy-MM-ddTHH:mm"
+    const datePart = t.slice(0, 10);
+    const hour = Number(t.slice(11, 13));
+    if (datePart === businessDate && hour >= NIGHT_WINDOW_START_HOUR) {
+      idxs.push(i);
+    } else if (datePart === nextDay && hour < NIGHT_WINDOW_END_HOUR) {
+      idxs.push(i);
+    }
+  }
+  return idxs;
 }
 
 function addDays(date: string, days: number): string {

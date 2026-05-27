@@ -13,6 +13,17 @@ clean:
 install:
     bun install
 
+# 本地开发: 等服务可访问后自动打开浏览器, 避免每次手动跳转
+dev:
+    @url="${DEV_URL:-http://localhost:${PORT:-3000}}"; \
+    ( \
+      while ! curl -fsS "$url" >/dev/null 2>&1; do sleep 0.5; done; \
+      open "$url"; \
+    ) & \
+    opener_pid="$!"; \
+    trap 'kill "$opener_pid" 2>/dev/null' EXIT INT TERM; \
+    bun run dev
+
 # 类型检查 + 测试 + 生产构建
 build:
     bun run typecheck

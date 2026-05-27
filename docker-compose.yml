@@ -3,7 +3,7 @@
 
 services:
   starwalk:
-    image: dt-smn:local
+    image: project-starwalk:local
     build:
       context: .
       dockerfile: Dockerfile

@@ -66,7 +66,7 @@ export function PlannerPage({ initialValue, initialMatrix, initialError }: Props
       ) : null}
 
       {matrix ? (
-        <div className="glass-panel p-3 overflow-x-auto">
+        <div className="glass-panel p-2 sm:p-3">
           <PlannerMatrixView matrix={matrix} />
           <p className="text-[11px] text-muted-foreground p-2 tabular-nums">
             生成时间 {formatTs(matrix.generatedAtUtcMs)} · 数据源 Open-Meteo · 月相 suncalc · 光污染静态基线

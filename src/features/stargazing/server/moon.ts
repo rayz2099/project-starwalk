@@ -51,6 +51,16 @@ export function computeMoonForBusinessDate(
   };
 }
 
+// 小时级月亮高度，why：满月是否影响观测取决于当时月亮是否在地平线上以及高度角
+export function computeMoonAltitudeDeg(location: LocationConfig, utcMs: number): number {
+  const position = SunCalc.getMoonPosition(
+    new Date(utcMs),
+    location.latitude,
+    location.longitude
+  );
+  return position.altitude * 180 / Math.PI;
+}
+
 function clamp01(n: number) {
   if (Number.isNaN(n)) return 0;
   if (n < 0) return 0;

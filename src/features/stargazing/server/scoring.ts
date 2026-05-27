@@ -1,83 +1,117 @@
-import { LIGHT_POLLUTION_THRESHOLDS, RATING_THRESHOLDS } from "../constants";
+import { LIGHT_POLLUTION_THRESHOLDS, RATING_THRESHOLDS, WINDOW_SCORING_THRESHOLDS } from "../constants";
 import { getLightPollutionSummary } from "../light-pollution";
-import type { MoonInfo, NightlyAggregation, RatingLevel, RatingResult } from "../types";
+import type {
+  BestObservationWindow,
+  MoonInfo,
+  NightlyAggregation,
+  NightlyWindowAnalysis,
+  RatingLevel,
+  RatingResult
+} from "../types";
 
-// 评分纯函数。规则顺序与 AGENTS.md 严格一致：
-// 1) 月相亮度 > 70%      => POOR
-// 2) 总云量平均/最大 > 60% => POOR
-// 3) 总云量 < 15% 且 月相 < 30% => EXCELLENT
-// 4) 最小温露点差 < 2°C   => FAIR（带结露/起雾风险）
-// 5) 其余 => FAIR
-// 最后叠加静态光污染修正，why：天气是当晚条件，光污染是地点长期上限，不能混成同一优先级
+// 评分纯函数：先看最佳连续窗口，再叠加地点长期光污染修正
+// why：满月不代表整夜不可观测，月落后窗口可能仍然适合观星
 export function scoreNight(
   agg: NightlyAggregation,
   moon: MoonInfo,
-  lightPollutionBortle: number
+  lightPollutionBortle: number | undefined,
+  analysis: NightlyWindowAnalysis
 ): RatingResult {
+  const risks = collectRisks(agg, moon, lightPollutionBortle, analysis.bestWindow);
+  const base = scoreBestWindow(analysis.bestWindow, risks);
+  return applyLightPollutionPenalty(base, lightPollutionBortle);
+}
+
+function collectRisks(
+  agg: NightlyAggregation,
+  moon: MoonInfo,
+  lightPollutionBortle: number | undefined,
+  bestWindow: BestObservationWindow | null
+): string[] {
   const risks: string[] = [];
 
-  // 露点风险无论评分如何都标注
   if (Number.isFinite(agg.minDewPointSpread) && agg.minDewPointSpread < RATING_THRESHOLDS.dewPointSpreadFair) {
-    risks.push(`温露点差仅 ${agg.minDewPointSpread.toFixed(1)}°C，结露/起雾风险高`);
+    risks.push(`温露点差最低 ${agg.minDewPointSpread.toFixed(1)}°C，结露/起雾风险高`);
   }
   if (Number.isFinite(agg.cloudCoverHighAvg) && agg.cloudCoverHighAvg >= 50) {
     risks.push(`高云平均 ${Math.round(agg.cloudCoverHighAvg)}%，可能影响透明度`);
   }
-  if (moon.illumination > RATING_THRESHOLDS.moonBrightPoor) {
-    risks.push(`月相亮度 ${(moon.illumination * 100).toFixed(0)}% 偏高`);
+  if (moon.illumination >= 0.7) {
+    risks.push(`月相亮度 ${(moon.illumination * 100).toFixed(0)}%，需优先看月落后窗口`);
   }
-  if (lightPollutionBortle > LIGHT_POLLUTION_THRESHOLDS.darkSkyMax) {
+  if (bestWindow?.moonlightImpact === "HIGH") {
+    risks.push("最佳窗口仍有强月光，更适合亮星、星座和行星");
+  }
+  if (lightPollutionBortle !== undefined && lightPollutionBortle > LIGHT_POLLUTION_THRESHOLDS.darkSkyMax) {
     risks.push(`光污染基线 ${getLightPollutionSummary(lightPollutionBortle)}`);
   }
-
-  const base = scoreBaseNight(agg, moon, risks);
-  return applyLightPollutionPenalty(base, lightPollutionBortle);
+  return risks;
 }
 
-// 基础评分只看会随夜晚变化的因子，why：保证天气/月相逻辑和地点基线逻辑能独立演进
-function scoreBaseNight(agg: NightlyAggregation, moon: MoonInfo, risks: string[]): RatingResult {
-  if (moon.illumination > RATING_THRESHOLDS.moonBrightPoor) {
-    return { level: "POOR", reason: `月相过亮 (${(moon.illumination * 100).toFixed(0)}%)`, risks };
-  }
-  if (
-    agg.cloudCoverAvg > RATING_THRESHOLDS.cloudPoor ||
-    agg.cloudCoverMax > RATING_THRESHOLDS.cloudPoor
-  ) {
+// 基础评分只看当晚能找到的最佳连续窗口，why：用户最终需要知道有没有可用时段
+function scoreBestWindow(bestWindow: BestObservationWindow | null, risks: string[]): RatingResult {
+  if (!bestWindow) {
     return {
       level: "POOR",
-      reason: `云量过高 (均 ${Math.round(agg.cloudCoverAvg)}% / 峰 ${Math.round(agg.cloudCoverMax)}%)`,
+      reason: `无连续 ${WINDOW_SCORING_THRESHOLDS.minCandidateHours}h 可观测窗口`,
       risks
     };
   }
+
   if (
-    agg.cloudCoverAvg < RATING_THRESHOLDS.cloudExcellent &&
-    moon.illumination < RATING_THRESHOLDS.moonExcellent
+    bestWindow.hours >= WINDOW_SCORING_THRESHOLDS.excellentHours &&
+    bestWindow.avgScore >= WINDOW_SCORING_THRESHOLDS.excellentAvgScore &&
+    bestWindow.avgCloudCover < WINDOW_SCORING_THRESHOLDS.excellentCloudAvg &&
+    bestWindow.moonlightImpact === "LOW"
   ) {
     return {
       level: "EXCELLENT",
-      reason: `晴朗 (云均 ${Math.round(agg.cloudCoverAvg)}%) 且月暗`,
+      reason: `最佳窗口 ${formatWindow(bestWindow)}，低云低月光`,
       risks
     };
   }
-  if (Number.isFinite(agg.minDewPointSpread) && agg.minDewPointSpread < RATING_THRESHOLDS.dewPointSpreadFair) {
-    return { level: "FAIR", reason: "存在结露/起雾风险", risks };
-  }
-  return { level: "FAIR", reason: "条件一般", risks };
-}
 
-// 光污染修正只做有限降级，why：地点长期属性应该约束上限，但不应掩盖实时天气的价值
-function applyLightPollutionPenalty(base: RatingResult, lightPollutionBortle: number): RatingResult {
-  const summary = getLightPollutionSummary(lightPollutionBortle);
-
-  if (lightPollutionBortle >= LIGHT_POLLUTION_THRESHOLDS.forcePoorMin && base.level !== "POOR") {
+  if (
+    bestWindow.hours >= WINDOW_SCORING_THRESHOLDS.minCandidateHours &&
+    bestWindow.avgScore >= WINDOW_SCORING_THRESHOLDS.fairAvgScore
+  ) {
     return {
-      ...base,
-      level: "POOR",
-      reason: `光污染过强 (${summary})`
+      level: "FAIR",
+      reason: `可观测窗口 ${formatWindow(bestWindow)}`,
+      risks
     };
   }
 
-  if (lightPollutionBortle === LIGHT_POLLUTION_THRESHOLDS.downgradeMax && base.level !== "POOR") {
+  return {
+    level: "POOR",
+    reason: `最佳窗口评分偏低 (${Math.round(bestWindow.avgScore)})`,
+    risks
+  };
+}
+
+// 光污染修正只做有限降级，why：地点长期属性应该约束暗弱目标上限，但不应掩盖实时可观测窗口
+function applyLightPollutionPenalty(
+  base: RatingResult,
+  lightPollutionBortle: number | undefined
+): RatingResult {
+  if (lightPollutionBortle === undefined) {
+    return {
+      ...base,
+      risks: [...base.risks, "搜索地点未配置光污染基线，评分未叠加 Bortle 修正"]
+    };
+  }
+
+  const summary = getLightPollutionSummary(lightPollutionBortle);
+
+  if (lightPollutionBortle >= LIGHT_POLLUTION_THRESHOLDS.forcePoorMin && base.level === "EXCELLENT") {
+    return {
+      ...base,
+      level: "FAIR",
+      reason: `窗口可用，但光污染限制暗弱目标 (${summary})`
+    };
+  }
+
+  if (lightPollutionBortle === LIGHT_POLLUTION_THRESHOLDS.downgradeMax && base.level === "EXCELLENT") {
     return {
       ...base,
       level: downgradeOneLevel(base.level),
@@ -93,11 +127,19 @@ function applyLightPollutionPenalty(base: RatingResult, lightPollutionBortle: nu
     return {
       ...base,
       level: "FAIR",
-      reason: `天气虽优，但光污染限制上限 (${summary})`
+      reason: `天气虽优，但光污染限制银河/深空 (${summary})`
     };
   }
 
   return base;
+}
+
+function formatWindow(bestWindow: BestObservationWindow): string {
+  return `${formatHour(bestWindow.startLocalTime)}-${formatHour(bestWindow.endLocalTime)}`;
+}
+
+function formatHour(localTime: string): string {
+  return localTime.slice(11, 16);
 }
 
 // 只允许降一级，why：保留天气/月相作为主要排序依据，避免静态属性完全吞掉动态差异

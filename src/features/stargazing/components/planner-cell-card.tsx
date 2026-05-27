@@ -1,6 +1,6 @@
 "use client";
 
-import { Cloud, Droplets, Thermometer } from "lucide-react";
+import { Cloud, Clock3, Droplets, Eye, Thermometer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getLightPollutionSummary, getLightPollutionTier } from "@/features/stargazing/light-pollution";
 import { cn } from "@/lib/utils";
@@ -33,16 +33,38 @@ function ratingBarClass(level: string | undefined) {
   return "bg-border";
 }
 
+function impactLabel(level: string | undefined): string {
+  if (level === "LOW") return "低月光";
+  if (level === "MEDIUM") return "中月光";
+  if (level === "HIGH") return "强月光";
+  return "月光未知";
+}
+
+function targetLabel(target: string): string {
+  if (target === "BRIGHT_STARS") return "亮星";
+  if (target === "PLANETS") return "行星";
+  if (target === "METEORS") return "流星";
+  if (target === "MILKY_WAY") return "银河";
+  if (target === "DEEP_SKY") return "深空";
+  return target;
+}
+
+function formatHour(localTime: string): string {
+  return localTime.slice(11, 16);
+}
+
 // 光污染文字颜色：why：给长期背景值稳定着色，不污染 nightly 评分主色
-function lightPollutionTextClass(bortle: number): string {
+function lightPollutionTextClass(bortle: number | undefined): string {
   const tier = getLightPollutionTier(bortle);
+  if (tier === "unknown") return "text-muted-foreground";
   if (tier === "dark") return "text-emerald-300";
   if (tier === "moderate") return "text-amber-300";
   return "text-rose-300";
 }
 
 export function PlannerCellCard({ cell, location }: Props) {
-  const { aggregation, rating, moon, error } = cell;
+  const { aggregation, rating, moon, error, windowAnalysis } = cell;
+  const bestWindow = windowAnalysis?.bestWindow;
   const tooltip = [rating?.reason, ...(rating?.risks ?? [])].filter(Boolean).join(" · ");
 
   return (
@@ -68,24 +90,36 @@ export function PlannerCellCard({ cell, location }: Props) {
         </span>
       </div>
 
-      <div className="pl-1">
-        <span
-          className={cn(
-            "text-[11px] font-medium tabular-nums",
-            lightPollutionTextClass(location.lightPollutionBortle)
-          )}
-          title="静态光污染基线（Bortle）"
-        >
-          光污染 {getLightPollutionSummary(location.lightPollutionBortle)}
-        </span>
-      </div>
+      {bestWindow ? (
+        <div className="grid gap-1.5 pl-1 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+            <Clock3 className="h-3 w-3 text-primary" />
+            {formatHour(bestWindow.startLocalTime)}-{formatHour(bestWindow.endLocalTime)}
+            <span className="text-muted-foreground">· {bestWindow.hours}h</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Eye className="h-3 w-3" />
+            {impactLabel(bestWindow.moonlightImpact)}
+            <span>·</span>
+            <span className="truncate">
+              {bestWindow.targetSuitability.slice(0, 3).map(targetLabel).join(" / ")}
+            </span>
+          </span>
+        </div>
+      ) : (
+        <p className="pl-1 text-xs text-muted-foreground">无连续可观测窗口</p>
+      )}
 
       {aggregation ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-1 text-xs tabular-nums">
-          <span className="inline-flex items-center gap-1" title="云量均值 / 峰值 / 高云均值">
+          <span className="inline-flex items-center gap-1" title="最佳窗口云量均值 / 峰值">
             <Cloud className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <span className="font-medium">{Math.round(aggregation.cloudCoverAvg)}%</span>
-            <span className="text-muted-foreground">↑{Math.round(aggregation.cloudCoverMax)}</span>
+            <span className="font-medium">
+              {Math.round(bestWindow?.avgCloudCover ?? aggregation.cloudCoverAvg)}%
+            </span>
+            <span className="text-muted-foreground">
+              ↑{Math.round(bestWindow?.maxCloudCover ?? aggregation.cloudCoverMax)}
+            </span>
           </span>
           <span className="inline-flex items-center gap-1" title="夜间最低气温">
             <Thermometer className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -111,6 +145,16 @@ export function PlannerCellCard({ cell, location }: Props) {
           数据不完整 {aggregation.hoursCovered}/8h
         </p>
       ) : null}
+
+      <span
+        className={cn(
+          "pl-1 text-[10px] font-medium tabular-nums",
+          lightPollutionTextClass(location.lightPollutionBortle)
+        )}
+        title="静态光污染基线（Bortle）"
+      >
+        {getLightPollutionSummary(location.lightPollutionBortle)}
+      </span>
     </div>
   );
 }

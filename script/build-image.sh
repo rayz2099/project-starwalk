@@ -9,7 +9,7 @@ readonly LOCAL_IMAGE="project-starwalk:local"
 readonly REMOTE_IMAGE_REPOSITORY="registry.cn-shanghai.aliyuncs.com/linran-pub/project-starwalk"
 
 resolve_version() {
-  node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (typeof pkg.version !== "string" || pkg.version.trim().length === 0) { throw new Error("package.json version is required"); } process.stdout.write(pkg.version.trim());' \
+  bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (typeof pkg.version !== "string" || pkg.version.trim().length === 0) { throw new Error("package.json version is required"); } process.stdout.write(pkg.version.trim());' \
     "${ROOT_DIR}/package.json"
 }
 

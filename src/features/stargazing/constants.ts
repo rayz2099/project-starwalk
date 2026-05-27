@@ -7,11 +7,20 @@ export const NIGHT_WINDOW_HOURS = 24 - NIGHT_WINDOW_START_HOUR + NIGHT_WINDOW_EN
 
 // 评分阈值
 export const RATING_THRESHOLDS = {
-  moonBrightPoor: 0.7,
   cloudPoor: 60, // % ，平均或最大任一超过即 POOR
   cloudExcellent: 15,
-  moonExcellent: 0.3,
   dewPointSpreadFair: 2 // °C
+} as const;
+
+// 最佳观测窗口阈值，why：满月不应直接判死，关键是能否找到连续低云低月光时段
+export const WINDOW_SCORING_THRESHOLDS = {
+  minCandidateScore: 45,
+  minCandidateHours: 2,
+  excellentHours: 3,
+  excellentAvgScore: 75,
+  fairAvgScore: 50,
+  excellentCloudAvg: 25,
+  maxCandidateCloudAvg: 60
 } as const;
 
 // 光污染阈值：why：让光污染只做静态修正，不取代天气/月相作为首要决策因子
@@ -23,10 +32,12 @@ export const LIGHT_POLLUTION_THRESHOLDS = {
 } as const;
 
 // 默认日期范围（业务日数）
-export const DEFAULT_DATE_RANGE_DAYS = 7;
+export const DEFAULT_DATE_RANGE_DAYS = 4;
 // 上限
 export const MAX_DATE_RANGE_DAYS = 14;
 
 // Open-Meteo 调用上限，用于服务端守护
 export const OPEN_METEO_REQUEST_TIMEOUT_MS = 8000;
 export const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
+export const NOMINATIM_GEOCODING_BASE_URL = "https://nominatim.openstreetmap.org/search";
+export const LOCATION_SEARCH_RESULT_LIMIT = 8;

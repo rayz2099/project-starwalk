@@ -3,7 +3,12 @@ import { LOCATION_GROUPS, LOCATIONS } from "@/config/locations";
 import { aggregateNightForDate } from "@/features/stargazing/server/aggregate";
 import { scoreNight } from "@/features/stargazing/server/scoring";
 import type { OpenMeteoHourlyResponse } from "@/features/stargazing/server/open-meteo";
-import type { MoonInfo, NightlyAggregation } from "@/features/stargazing/types";
+import type {
+  BestObservationWindow,
+  MoonInfo,
+  NightlyAggregation,
+  NightlyWindowAnalysis
+} from "@/features/stargazing/types";
 
 // 构造连续 48 小时的 hourly 数据（覆盖业务日 + 次日），timezone Asia/Shanghai
 function buildHourly(date: string, nextDate: string, opts: {
@@ -75,44 +80,69 @@ function agg(o: Partial<NightlyAggregation>): NightlyAggregation {
   };
 }
 
+function analysis(o: Partial<BestObservationWindow>): NightlyWindowAnalysis {
+  return {
+    slots: [],
+    bestWindow: {
+      startLocalTime: "2026-04-25T23:00",
+      endLocalTime: "2026-04-26T02:00",
+      hours: 3,
+      avgScore: 80,
+      avgCloudCover: 10,
+      maxCloudCover: 20,
+      moonlightImpact: "LOW",
+      targetSuitability: ["BRIGHT_STARS", "PLANETS", "MILKY_WAY"],
+      ...o
+    }
+  };
+}
+
 describe("scoreNight 评分顺序", () => {
-  test("月亮过亮直接 POOR", () => {
-    const r = scoreNight(agg({}), moon(0.8), 3);
+  test("满月但存在低月光窗口时不直接 POOR", () => {
+    const r = scoreNight(agg({}), moon(0.8), 3, analysis({ moonlightImpact: "LOW" }));
+    expect(r.level).toBe("EXCELLENT");
+  });
+  test("没有连续可观测窗口时 POOR", () => {
+    const r = scoreNight(agg({ cloudCoverAvg: 65, cloudCoverMax: 80 }), moon(0.1), 3, {
+      slots: [],
+      bestWindow: null
+    });
     expect(r.level).toBe("POOR");
   });
-  test("月暗云高 POOR", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 65, cloudCoverMax: 80 }), moon(0.1), 3);
-    expect(r.level).toBe("POOR");
-  });
-  test("云薄月暗 EXCELLENT", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 3);
+  test("长时间低云低月光窗口 EXCELLENT", () => {
+    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 3, analysis({}));
     expect(r.level).toBe("EXCELLENT");
   });
   test("温露差小 FAIR + 风险", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 30, cloudCoverMax: 40, minDewPointSpread: 1 }), moon(0.4), 3);
+    const r = scoreNight(
+      agg({ cloudCoverAvg: 30, cloudCoverMax: 40, minDewPointSpread: 1 }),
+      moon(0.4),
+      3,
+      analysis({ avgScore: 60, avgCloudCover: 30, moonlightImpact: "MEDIUM" })
+    );
     expect(r.level).toBe("FAIR");
     expect(r.risks.some((x) => x.includes("结露"))).toBe(true);
   });
   test("普通条件 FAIR", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 3);
+    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 3, analysis({ avgScore: 60 }));
     expect(r.level).toBe("FAIR");
   });
   test("中度光污染会把 EXCELLENT 压到 FAIR，并保留原始值说明", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 5);
+    const r = scoreNight(agg({ cloudCoverAvg: 5, cloudCoverMax: 10 }), moon(0.1), 5, analysis({}));
     expect(r.level).toBe("FAIR");
     expect(r.reason).toContain("光污染");
     expect(r.risks.some((x) => x.includes("B5"))).toBe(true);
   });
-  test("重度光污染会把 FAIR 进一步压到 POOR", () => {
-    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 6);
-    expect(r.level).toBe("POOR");
+  test("重度光污染不会吞掉可观测窗口，但会限制优秀评级", () => {
+    const r = scoreNight(agg({ cloudCoverAvg: 30 }), moon(0.4), 6, analysis({}));
+    expect(r.level).toBe("FAIR");
     expect(r.reason).toContain("光污染");
   });
 });
 
 describe("locations 分组与静态光污染基线", () => {
-  test("地点分组固定为江浙、广东沿海、云南", () => {
-    expect(LOCATION_GROUPS.map((group) => group.label)).toEqual(["江浙", "广东沿海", "云南"]);
+  test("地点分组固定为江浙、广东沿海、云南，并包含搜索临时分组", () => {
+    expect(LOCATION_GROUPS.map((group) => group.label)).toEqual(["江浙", "广东沿海", "云南", "搜索地点"]);
   });
 
   test("每个分组地点数量符合预期，且都带有静态光污染原始值", () => {
