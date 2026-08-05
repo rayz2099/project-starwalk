@@ -50,30 +50,41 @@ export function PlannerPage({ initialValue, initialMatrix, initialError }: Props
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <ControlPanel value={value} loading={pending} onSubmit={submit} />
 
       {error ? (
-        <div className="rounded-xl border border-rating-poor/40 bg-rating-poor/10 p-4 text-sm text-rating-poor">
+        <div className="rounded-2xl border border-rating-poor/35 bg-rating-poor/10 px-4 py-3 text-sm text-rating-poor">
           矩阵生成失败：{error}
         </div>
       ) : null}
 
       {pending && !matrix ? (
-        <div className="glass-panel p-10 text-center text-muted-foreground animate-pulse">
+        <div className="glass-panel p-10 text-center text-sm text-muted-foreground">
+          <div className="mx-auto mb-3 h-1.5 w-40 overflow-hidden rounded-full bg-muted">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-primary/70" />
+          </div>
           正在拉取天气并计算评分…
         </div>
       ) : null}
 
       {matrix ? (
-        <div className="glass-panel p-2 sm:p-3">
+        <section className="glass-panel p-2 sm:p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 pt-1">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Observation Matrix
+            </p>
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              {matrix.rows.length} 地点 · {matrix.dates.length} 日
+            </p>
+          </div>
           <PlannerMatrixView matrix={matrix} />
-          <p className="text-[11px] text-muted-foreground p-2 tabular-nums">
-            生成时间 {formatTs(matrix.generatedAtUtcMs)} · 数据源 Open-Meteo · 月相 suncalc · 光污染静态基线
+          <p className="p-2 text-[11px] tabular-nums text-muted-foreground">
+            生成时间 {formatTs(matrix.generatedAtUtcMs)} · Open-Meteo · suncalc · 降水 hard gate 5mm
           </p>
-        </div>
+        </section>
       ) : !pending && !error ? (
-        <div className="glass-panel border-dashed p-10 text-center text-muted-foreground">
+        <div className="glass-panel border-dashed p-10 text-center text-sm text-muted-foreground">
           请选择日期范围与地点后查看矩阵
         </div>
       ) : null}

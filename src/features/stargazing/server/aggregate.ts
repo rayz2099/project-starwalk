@@ -1,7 +1,8 @@
 import {
   NIGHT_WINDOW_END_HOUR,
   NIGHT_WINDOW_HOURS,
-  NIGHT_WINDOW_START_HOUR
+  NIGHT_WINDOW_START_HOUR,
+  PRECIP_THRESHOLDS
 } from "../constants";
 import type { NightlyAggregation } from "../types";
 import type { OpenMeteoHourlyResponse } from "./open-meteo";
@@ -35,7 +36,11 @@ export function aggregateNightForDate(
       cloudCoverLowAvg: NaN,
       cloudCoverHighAvg: NaN,
       minTemperature: NaN,
-      minDewPointSpread: NaN
+      minDewPointSpread: NaN,
+      precipitationSumMm: NaN,
+      precipitationMaxMm: NaN,
+      precipitationProbabilityMax: NaN,
+      wetHourCount: 0
     };
   }
 
@@ -45,12 +50,20 @@ export function aggregateNightForDate(
   let cloudHighSum = 0;
   let tempMin = Infinity;
   let spreadMin = Infinity;
+  let precipSum = 0;
+  let precipMax = -Infinity;
+  let precipProbMax = -Infinity;
+  let wetHourCount = 0;
+
   for (const i of idxs) {
     const c = hourly.cloud_cover[i];
     const cl = hourly.cloud_cover_low[i];
     const ch = hourly.cloud_cover_high[i];
     const t = hourly.temperature_2m[i];
     const td = hourly.dew_point_2m[i];
+    const precip = hourly.precipitation[i] ?? 0;
+    const precipProb = hourly.precipitation_probability[i] ?? 0;
+
     cloudSum += c;
     if (c > cloudMax) cloudMax = c;
     cloudLowSum += cl;
@@ -58,6 +71,11 @@ export function aggregateNightForDate(
     if (t < tempMin) tempMin = t;
     const spread = t - td;
     if (spread < spreadMin) spreadMin = spread;
+
+    precipSum += precip;
+    if (precip > precipMax) precipMax = precip;
+    if (precipProb > precipProbMax) precipProbMax = precipProb;
+    if (precip > PRECIP_THRESHOLDS.wetHourSoftMinMm) wetHourCount += 1;
   }
 
   return {
@@ -71,7 +89,11 @@ export function aggregateNightForDate(
     cloudCoverLowAvg: cloudLowSum / hoursCovered,
     cloudCoverHighAvg: cloudHighSum / hoursCovered,
     minTemperature: tempMin,
-    minDewPointSpread: spreadMin
+    minDewPointSpread: spreadMin,
+    precipitationSumMm: precipSum,
+    precipitationMaxMm: precipMax,
+    precipitationProbabilityMax: precipProbMax,
+    wetHourCount
   };
 }
 

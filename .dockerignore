@@ -14,3 +14,8 @@ README.md
 todolist.md
 AGENTS.md
 tests
+# 本地清理/备份产物，禁止塞进构建上下文
+.next.bak*
+.tsbuildinfo
+tsconfig.tsbuildinfo
+docs

@@ -1,5 +1,5 @@
 import { LOCATIONS } from "@/config/locations";
-import { MAX_DATE_RANGE_DAYS } from "../constants";
+import { MAX_DATE_RANGE_DAYS, MAX_SELECTED_LOCATIONS } from "../constants";
 import type {
   LocationConfig,
   MatrixCell,
@@ -28,6 +28,10 @@ export async function buildPlannerMatrix(input: PlannerInput): Promise<PlannerMa
   const locations = allLocations.filter((l) => input.locationIds.includes(l.id));
   if (locations.length === 0) {
     throw new Error("未选择任何地点");
+  }
+  // 硬顶拒绝，why：禁止静默截断导致用户误以为全选都已计算
+  if (locations.length > MAX_SELECTED_LOCATIONS) {
+    throw new Error(`地点过多：单次最多 ${MAX_SELECTED_LOCATIONS} 个，当前 ${locations.length}`);
   }
 
   const fetched = await fetchHourlyBatch(locations, input.startDate, input.endDate);

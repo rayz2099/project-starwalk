@@ -1,5 +1,11 @@
 // 地点分组：why：页面核心是跨区域横向比较，分组是信息组织主维度
-export type LocationGroupId = "jiangzhe" | "guangdongCoast" | "yunnan" | "search";
+export type LocationGroupId =
+  | "jiangzhe"
+  | "guangdongCoast"
+  | "yunnan"
+  | "shennongjia"
+  | "chuanxi"
+  | "search";
 
 // 分组静态配置
 export interface LocationGroupConfig {
@@ -40,6 +46,8 @@ export interface HourlyWeatherPoint {
   cloudCover: number;
   cloudCoverLow: number;
   cloudCoverHigh: number;
+  precipitationMm: number;
+  precipitationProbability: number;
 }
 
 // 夜间窗口聚合结果
@@ -60,6 +68,14 @@ export interface NightlyAggregation {
   minTemperature: number;
   // min(T - Td) ；越小越容易结露/起雾
   minDewPointSpread: number;
+  // 夜间合计降水量 mm，why：hard gate 用合计而不是单点尖刺
+  precipitationSumMm: number;
+  // 夜间最大小时降水 mm
+  precipitationMaxMm: number;
+  // 夜间最大降水概率 %，why：展示用 max 防呆，不进评分
+  precipitationProbabilityMax: number;
+  // 湿小时数（> soft 下沿）
+  wetHourCount: number;
 }
 
 // 小时级观测片段：why：观星条件不是整夜单点值，月落/月升会让同一夜不同时段差异很大
@@ -70,6 +86,10 @@ export interface HourlyObservationSlot {
   cloudCoverHigh: number;
   temperature: number;
   dewPointSpread: number;
+  precipitationMm: number;
+  precipitationProbability: number;
+  // 是否因降水被踢出候选，why：窗口分析与 UI 共用同一判定
+  wetKilled: boolean;
   moonAltitudeDeg: number;
   moonIllumination: number;
   moonAboveHorizon: boolean;
@@ -102,7 +122,7 @@ export interface MoonInfo {
   // 0~1 月相位（0 新月 0.25 上弦 0.5 满月 0.75 下弦）
   phase: number;
   phaseLabel: string;
-  phaseIcon: string; // emoji
+  phaseIcon: string;
 }
 
 // 评分结果

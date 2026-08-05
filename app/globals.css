@@ -3,71 +3,70 @@
 @tailwind utilities;
 
 /*
- * 主题策略：
- * - 默认（:root）= 亮色，避免夜间设计噪音影响白天阅读
- * - prefers-color-scheme: dark 时整体切换到暗色，跟随系统
- * - 评分语义色（excellent/fair/poor）两套主题都校准过，保证可读性
+ * design-taste v1 校准：
+ * - zinc 中性底 + 单一 emerald 强调
+ * - 禁止 purple/lila glow
+ * - 评分语义色独立保留
  */
 @layer base {
   :root {
-    --background: 220 30% 97%;
-    --foreground: 222 35% 12%;
+    --background: 40 12% 97%;
+    --foreground: 240 8% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222 35% 12%;
+    --card-foreground: 240 8% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 35% 12%;
-    --primary: 222 80% 52%;
+    --popover-foreground: 240 8% 10%;
+    --primary: 158 64% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 92%;
-    --secondary-foreground: 222 35% 18%;
-    --muted: 220 20% 94%;
-    --muted-foreground: 220 12% 42%;
-    --accent: 222 80% 95%;
-    --accent-foreground: 222 80% 30%;
-    --destructive: 0 72% 50%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 240 6% 20%;
+    --muted: 40 10% 94%;
+    --muted-foreground: 240 4% 42%;
+    --accent: 158 30% 94%;
+    --accent-foreground: 158 50% 22%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 222 80% 52%;
-    --radius: 0.75rem;
+    --border: 40 8% 88%;
+    --input: 40 8% 88%;
+    --ring: 158 64% 32%;
+    --radius: 0.9rem;
 
-    --rating-excellent: 152 65% 38%;
-    --rating-fair: 32 88% 45%;
-    --rating-poor: 0 72% 50%;
+    --rating-excellent: 152 62% 34%;
+    --rating-fair: 34 88% 42%;
+    --rating-poor: 0 72% 48%;
 
-    /* 背景渐变控制点 */
-    --bg-glow-1: 222 80% 95%;
-    --bg-glow-2: 270 70% 95%;
+    --bg-glow-1: 158 28% 92%;
+    --bg-glow-2: 40 12% 94%;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 224 35% 6%;
-      --foreground: 210 30% 96%;
-      --card: 224 28% 10%;
-      --card-foreground: 210 30% 96%;
-      --popover: 224 28% 10%;
-      --popover-foreground: 210 30% 96%;
-      --primary: 210 95% 65%;
-      --primary-foreground: 224 35% 8%;
-      --secondary: 224 20% 16%;
-      --secondary-foreground: 210 30% 96%;
-      --muted: 224 20% 14%;
-      --muted-foreground: 215 18% 65%;
-      --accent: 224 25% 18%;
-      --accent-foreground: 210 30% 96%;
+      --background: 240 8% 6%;
+      --foreground: 40 10% 96%;
+      --card: 240 7% 9%;
+      --card-foreground: 40 10% 96%;
+      --popover: 240 7% 9%;
+      --popover-foreground: 40 10% 96%;
+      --primary: 158 58% 48%;
+      --primary-foreground: 160 40% 8%;
+      --secondary: 240 6% 14%;
+      --secondary-foreground: 40 10% 96%;
+      --muted: 240 6% 13%;
+      --muted-foreground: 240 4% 64%;
+      --accent: 158 18% 14%;
+      --accent-foreground: 158 40% 80%;
       --destructive: 0 70% 55%;
-      --destructive-foreground: 210 40% 98%;
-      --border: 224 20% 18%;
-      --input: 224 20% 18%;
-      --ring: 210 95% 65%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 240 6% 16%;
+      --input: 240 6% 16%;
+      --ring: 158 58% 48%;
 
-      --rating-excellent: 152 65% 50%;
-      --rating-fair: 42 95% 60%;
-      --rating-poor: 0 75% 62%;
+      --rating-excellent: 152 60% 48%;
+      --rating-fair: 40 92% 58%;
+      --rating-poor: 0 72% 60%;
 
-      --bg-glow-1: 222 80% 14%;
-      --bg-glow-2: 270 60% 14%;
+      --bg-glow-1: 158 20% 12%;
+      --bg-glow-2: 240 8% 10%;
     }
   }
 }
@@ -80,19 +79,18 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  /* 全站背景轻微的星空感径向渐变，亮/暗主题各自配色 */
   body {
+    font-feature-settings: "ss01" on, "cv11" on;
     background-image:
-      radial-gradient(800px 400px at 12% -10%, hsl(var(--bg-glow-1) / 0.65), transparent 60%),
-      radial-gradient(700px 380px at 92% 0%, hsl(var(--bg-glow-2) / 0.55), transparent 65%);
+      radial-gradient(900px 420px at 8% -12%, hsl(var(--bg-glow-1) / 0.7), transparent 58%),
+      radial-gradient(700px 360px at 96% 0%, hsl(var(--bg-glow-2) / 0.55), transparent 62%);
     background-attachment: fixed;
   }
 }
 
 @layer components {
-  /* 玻璃质感容器：通过 card 变量同时适配亮/暗 */
   .glass-panel {
-    @apply rounded-2xl border bg-card/70 shadow-sm backdrop-blur-md;
-    border-color: hsl(var(--border) / 0.7);
+    @apply rounded-[1.35rem] border bg-card/80 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.28)] backdrop-blur-md;
+    border-color: hsl(var(--border) / 0.85);
   }
 }

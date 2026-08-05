@@ -5,17 +5,27 @@ export const LOCATION_GROUPS: LocationGroupConfig[] = [
   {
     id: "jiangzhe",
     label: "江浙",
-    description: "以上海、江苏、浙江、皖南周边的常用候选点为主"
+    description: "上海、苏浙皖周边近场徒步/露营候选"
   },
   {
     id: "guangdongCoast",
     label: "广东沿海",
-    description: "以近海、海岛、海湾类开阔天际线点位为主"
+    description: "近海、海岛、海湾类开阔天际线"
   },
   {
     id: "yunnan",
     label: "云南",
-    description: "以滇西北高海拔、低光害候选点为主"
+    description: "滇西北高海拔、低光害"
+  },
+  {
+    id: "shennongjia",
+    label: "神农架",
+    description: "鄂西高海拔湿地与林区长线"
+  },
+  {
+    id: "chuanxi",
+    label: "川西",
+    description: "高原暗空与长线徒步节点"
   },
   {
     id: "search",
@@ -24,8 +34,7 @@ export const LOCATION_GROUPS: LocationGroupConfig[] = [
   }
 ];
 
-// 静态地点配置：当前默认聚焦江浙沪与皖南周边，保证首页首屏就是可直接对比的候选观星点
-// 坐标优先落在景区/观景点附近而非市区中心，避免天气与月相窗口偏离真实观测环境
+// 静态地点配置：坐标优先落在景区/营地附近，避免市区中心天气偏离真实观测环境
 export const LOCATIONS: LocationConfig[] = [
   {
     id: "shanghai-chongming-dongtan",
@@ -88,6 +97,16 @@ export const LOCATIONS: LocationConfig[] = [
     lightPollutionBortle: 3
   },
   {
+    id: "zhejiang-linan-damingshan",
+    name: "浙江临安 · 大明山",
+    groupId: "jiangzhe",
+    latitude: 30.0418,
+    longitude: 118.9864,
+    elevation: 1480,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 3
+  },
+  {
     id: "zhejiang-anji-tianhuangping",
     name: "浙江安吉 · 天荒坪（江南天池）",
     groupId: "jiangzhe",
@@ -114,6 +133,26 @@ export const LOCATIONS: LocationConfig[] = [
     latitude: 28.2338,
     longitude: 119.3759,
     elevation: 1000,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 3
+  },
+  {
+    id: "zhejiang-yuyao-simingshan-yangtianhu",
+    name: "浙江余姚 · 四明山仰天湖",
+    groupId: "jiangzhe",
+    latitude: 29.752,
+    longitude: 121.085,
+    elevation: 600,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 4
+  },
+  {
+    id: "zhejiang-jiande-gechuanjian",
+    name: "浙江建德 · 搁船尖",
+    groupId: "jiangzhe",
+    latitude: 29.552,
+    longitude: 119.288,
+    elevation: 1080,
     timezone: "Asia/Shanghai",
     lightPollutionBortle: 3
   },
@@ -226,8 +265,120 @@ export const LOCATIONS: LocationConfig[] = [
     elevation: 2690,
     timezone: "Asia/Shanghai",
     lightPollutionBortle: 3
+  },
+  {
+    id: "hubei-shennongjia-dajiuhu",
+    name: "湖北神农架 · 大九湖",
+    groupId: "shennongjia",
+    latitude: 31.489,
+    longitude: 110.008,
+    elevation: 1730,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "hubei-shennongjia-shennongding",
+    name: "湖北神农架 · 神农顶",
+    groupId: "shennongjia",
+    latitude: 31.445,
+    longitude: 110.288,
+    elevation: 3105,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-kangding-xinduqiao",
+    name: "四川康定 · 新都桥",
+    groupId: "chuanxi",
+    latitude: 30.041,
+    longitude: 101.486,
+    elevation: 3300,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-litang-wuliangta",
+    name: "四川理塘 · 无量塔草原",
+    groupId: "chuanxi",
+    latitude: 29.998,
+    longitude: 100.269,
+    elevation: 4014,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-daocheng-yading-chonggu",
+    name: "四川稻城 · 亚丁冲古寺",
+    groupId: "chuanxi",
+    latitude: 28.36,
+    longitude: 100.355,
+    elevation: 3880,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 1
+  },
+  {
+    id: "sichuan-xiaojin-siguniangshan-shuangqiao",
+    name: "四川小金 · 四姑娘山双桥沟",
+    groupId: "chuanxi",
+    latitude: 31.105,
+    longitude: 102.901,
+    elevation: 2500,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-seda-larong",
+    name: "四川色达 · 喇荣外围",
+    groupId: "chuanxi",
+    latitude: 32.268,
+    longitude: 100.333,
+    elevation: 3500,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-kangding-tagong",
+    name: "四川康定 · 塔公草原",
+    groupId: "chuanxi",
+    latitude: 30.278,
+    longitude: 101.522,
+    elevation: 3730,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 2
+  },
+  {
+    id: "sichuan-xiaojin-balangshan-yakou",
+    name: "四川小金 · 巴朗山垭口",
+    groupId: "chuanxi",
+    latitude: 30.905,
+    longitude: 102.898,
+    elevation: 4487,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 1
+  },
+  {
+    id: "sichuan-batang-cuopugou",
+    name: "四川巴塘 · 措普沟",
+    groupId: "chuanxi",
+    latitude: 30.195,
+    longitude: 99.548,
+    elevation: 4000,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 1
+  },
+  {
+    id: "sichuan-danba-jiaju",
+    name: "四川丹巴 · 甲居外围",
+    groupId: "chuanxi",
+    latitude: 30.878,
+    longitude: 101.882,
+    elevation: 2200,
+    timezone: "Asia/Shanghai",
+    lightPollutionBortle: 3
   }
 ];
 
-// 默认全选整组候选点，why：这个页面的核心价值就是多地点横向比较，而不是单点钻取
-export const DEFAULT_LOCATION_IDS = LOCATIONS.map((location) => location.id);
+// 默认只勾近场江浙组，why：远点长线不应污染周末对比首屏与 Open-Meteo fan-out
+export const DEFAULT_LOCATION_IDS = LOCATIONS.filter(
+  (location) => location.groupId === "jiangzhe"
+).map((location) => location.id);

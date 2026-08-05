@@ -1,10 +1,28 @@
-node_modules
-.next
-out
-dist
+# dependencies
+node_modules/
+
+# next / build
+.next/
+.next.bak*/
+out/
+dist/
+.turbo/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# env / secrets
 .env*
-.DS_Store
+!.env.example
+
+# logs / os
 *.log
+.DS_Store
+
+# package manager (repo uses bun.lock intentionally ignored historically)
 bun.lock
 bun.lockb
-.turbo
+
+# local tooling / editor
+.idea/
+.vscode/
+*.swp

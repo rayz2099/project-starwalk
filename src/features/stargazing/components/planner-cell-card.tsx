@@ -1,160 +1,142 @@
 "use client";
 
-import { Cloud, Clock3, Droplets, Eye, Thermometer } from "lucide-react";
+import { Cloud, CloudRain, Droplets, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getLightPollutionSummary, getLightPollutionTier } from "@/features/stargazing/light-pollution";
+import { Card, CardContent } from "@/components/ui/card";
+import { PRECIP_THRESHOLDS } from "@/features/stargazing/constants";
 import { cn } from "@/lib/utils";
-import type { LocationConfig, MatrixCell } from "@/features/stargazing/types";
+import type { LocationConfig, MatrixCell, RatingLevel } from "../types";
 
 interface Props {
   cell: MatrixCell;
   location: LocationConfig;
 }
 
-function ratingVariant(level: string | undefined) {
-  if (level === "EXCELLENT") return "excellent" as const;
-  if (level === "FAIR") return "fair" as const;
-  if (level === "POOR") return "poor" as const;
-  return "outline" as const;
+// 评级语义色：稳定映射，禁止组件内临时取色
+function levelBadgeClass(level: RatingLevel | undefined): string {
+  if (level === "EXCELLENT") {
+    return "border-rating-excellent/30 bg-rating-excellent/15 text-rating-excellent";
+  }
+  if (level === "FAIR") {
+    return "border-rating-fair/30 bg-rating-fair/15 text-rating-fair";
+  }
+  if (level === "POOR") {
+    return "border-rating-poor/30 bg-rating-poor/15 text-rating-poor";
+  }
+  return "border-border bg-muted text-muted-foreground";
 }
 
-function ratingLabel(level: string | undefined) {
-  if (level === "EXCELLENT") return "极佳";
+function levelAccent(level: RatingLevel | undefined): string {
+  if (level === "EXCELLENT") return "border-l-rating-excellent";
+  if (level === "FAIR") return "border-l-rating-fair";
+  if (level === "POOR") return "border-l-rating-poor";
+  return "border-l-border";
+}
+
+function levelLabel(level: RatingLevel | undefined): string {
+  if (level === "EXCELLENT") return "优秀";
   if (level === "FAIR") return "一般";
-  if (level === "POOR") return "不宜";
-  return "无数据";
+  if (level === "POOR") return "较差";
+  return "不可算";
 }
 
-// 评级 → 卡片左侧色条颜色，避免大块染色干扰主体阅读
-function ratingBarClass(level: string | undefined) {
-  if (level === "EXCELLENT") return "bg-rating-excellent";
-  if (level === "FAIR") return "bg-rating-fair";
-  if (level === "POOR") return "bg-rating-poor";
-  return "bg-border";
-}
+// 单元格：评级 + 云量 + 月相 + 雨概率 max + 可选 mm + 风险
+// why：矩阵可比性优先，字段只放决策必需量
+export function PlannerCellCard({ cell }: Props) {
+  const rating = cell.rating;
+  const agg = cell.aggregation;
+  const bestWindow = cell.windowAnalysis?.bestWindow;
+  const moonPct = Math.round(cell.moon.illumination * 100);
+  const rainProb =
+    agg && Number.isFinite(agg.precipitationProbabilityMax)
+      ? Math.round(agg.precipitationProbabilityMax)
+      : null;
+  const rainSum =
+    agg && Number.isFinite(agg.precipitationSumMm) ? agg.precipitationSumMm : null;
+  const showRainMm =
+    rainSum !== null && rainSum > PRECIP_THRESHOLDS.softRiskMinMm;
 
-function impactLabel(level: string | undefined): string {
-  if (level === "LOW") return "低月光";
-  if (level === "MEDIUM") return "中月光";
-  if (level === "HIGH") return "强月光";
-  return "月光未知";
-}
-
-function targetLabel(target: string): string {
-  if (target === "BRIGHT_STARS") return "亮星";
-  if (target === "PLANETS") return "行星";
-  if (target === "METEORS") return "流星";
-  if (target === "MILKY_WAY") return "银河";
-  if (target === "DEEP_SKY") return "深空";
-  return target;
-}
-
-function formatHour(localTime: string): string {
-  return localTime.slice(11, 16);
-}
-
-// 光污染文字颜色：why：给长期背景值稳定着色，不污染 nightly 评分主色
-function lightPollutionTextClass(bortle: number | undefined): string {
-  const tier = getLightPollutionTier(bortle);
-  if (tier === "unknown") return "text-muted-foreground";
-  if (tier === "dark") return "text-emerald-300";
-  if (tier === "moderate") return "text-amber-300";
-  return "text-rose-300";
-}
-
-export function PlannerCellCard({ cell, location }: Props) {
-  const { aggregation, rating, moon, error, windowAnalysis } = cell;
-  const bestWindow = windowAnalysis?.bestWindow;
-  const tooltip = [rating?.reason, ...(rating?.risks ?? [])].filter(Boolean).join(" · ");
+  if (cell.error && !agg) {
+    return (
+      <Card
+        className={cn(
+          "min-h-[148px] border-dashed border-border/70 bg-muted/30 shadow-none",
+          "border-l-2",
+          levelAccent(undefined)
+        )}
+      >
+        <CardContent className="space-y-2 p-3">
+          <Badge variant="outline" className={levelBadgeClass(undefined)}>
+            不可算
+          </Badge>
+          <p className="text-xs leading-5 text-muted-foreground">{cell.error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div
+    <Card
       className={cn(
-        "relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card/60 p-3",
-        "shadow-[0_1px_0_hsl(var(--border)/0.5)] transition-colors hover:bg-card/90"
+        "min-h-[148px] border-border/60 bg-card/90 shadow-none transition-colors",
+        "border-l-2 hover:bg-card",
+        levelAccent(rating?.level)
       )}
-      title={tooltip || undefined}
     >
-      <span
-        aria-hidden
-        className={cn("absolute inset-y-0 left-0 w-[3px]", ratingBarClass(rating?.level))}
-      />
-
-      <div className="flex items-center justify-between gap-2 pl-1">
-        <Badge variant={ratingVariant(rating?.level)}>{ratingLabel(rating?.level)}</Badge>
-        <span
-          className="whitespace-nowrap text-xs tabular-nums text-muted-foreground"
-          title={moon.phaseLabel}
-        >
-          {moon.phaseIcon} {(moon.illumination * 100).toFixed(0)}%
-        </span>
-      </div>
-
-      {bestWindow ? (
-        <div className="grid gap-1.5 pl-1 text-xs">
-          <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-            <Clock3 className="h-3 w-3 text-primary" />
-            {formatHour(bestWindow.startLocalTime)}-{formatHour(bestWindow.endLocalTime)}
-            <span className="text-muted-foreground">· {bestWindow.hours}h</span>
-          </span>
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <Eye className="h-3 w-3" />
-            {impactLabel(bestWindow.moonlightImpact)}
-            <span>·</span>
-            <span className="truncate">
-              {bestWindow.targetSuitability.slice(0, 3).map(targetLabel).join(" / ")}
+      <CardContent className="flex h-full flex-col gap-2.5 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <Badge variant="outline" className={cn("font-medium", levelBadgeClass(rating?.level))}>
+            {levelLabel(rating?.level)}
+          </Badge>
+          {bestWindow ? (
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              {bestWindow.startLocalTime.slice(11, 16)}-{bestWindow.endLocalTime.slice(11, 16)}
             </span>
-          </span>
+          ) : null}
         </div>
-      ) : (
-        <p className="pl-1 text-xs text-muted-foreground">无连续可观测窗口</p>
-      )}
 
-      {aggregation ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-1 text-xs tabular-nums">
-          <span className="inline-flex items-center gap-1" title="最佳窗口云量均值 / 峰值">
-            <Cloud className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <span className="font-medium">
-              {Math.round(bestWindow?.avgCloudCover ?? aggregation.cloudCoverAvg)}%
-            </span>
-            <span className="text-muted-foreground">
-              ↑{Math.round(bestWindow?.maxCloudCover ?? aggregation.cloudCoverMax)}
-            </span>
-          </span>
-          <span className="inline-flex items-center gap-1" title="夜间最低气温">
-            <Thermometer className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <span className="font-medium">{aggregation.minTemperature.toFixed(0)}°</span>
-          </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1",
-              aggregation.minDewPointSpread < 2 && "text-rating-poor"
-            )}
-            title="最小温露点差，<2°C 易起雾结露"
-          >
-            <Droplets className="h-3 w-3 shrink-0" />
-            <span className="font-medium">Δ{aggregation.minDewPointSpread.toFixed(1)}°</span>
-          </span>
-        </div>
-      ) : (
-        <p className="pl-1 text-xs text-rating-poor">{error ?? "无数据"}</p>
-      )}
-
-      {!aggregation?.complete && aggregation ? (
-        <p className="pl-1 text-[10px] text-muted-foreground">
-          数据不完整 {aggregation.hoursCovered}/8h
+        <p className="line-clamp-2 text-xs leading-5 text-foreground/90">
+          {rating?.reason ?? "无评分结果"}
         </p>
-      ) : null}
 
-      <span
-        className={cn(
-          "pl-1 text-[10px] font-medium tabular-nums",
-          lightPollutionTextClass(location.lightPollutionBortle)
-        )}
-        title="静态光污染基线（Bortle）"
-      >
-        {getLightPollutionSummary(location.lightPollutionBortle)}
-      </span>
-    </div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] tabular-nums text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Cloud className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            云量 {agg ? `${Math.round(agg.cloudCoverAvg)}%` : "--"}
+            {agg ? ` / max ${Math.round(agg.cloudCoverMax)}%` : ""}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Moon className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            {cell.moon.phaseLabel} {moonPct}%
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <CloudRain className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            雨概率 {rainProb !== null ? `${rainProb}%` : "--"}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Droplets className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            {showRainMm && rainSum !== null
+              ? `夜间 ${rainSum.toFixed(1)} mm`
+              : `露点差 ${
+                  agg && Number.isFinite(agg.minDewPointSpread)
+                    ? `${agg.minDewPointSpread.toFixed(1)}°C`
+                    : "--"
+                }`}
+          </span>
+        </div>
+
+        {rating?.risks && rating.risks.length > 0 ? (
+          <ul className="mt-auto space-y-0.5 border-t border-border/50 pt-2">
+            {rating.risks.slice(0, 2).map((risk) => (
+              <li key={risk} className="line-clamp-1 text-[10px] leading-4 text-muted-foreground">
+                {risk}
+              </li>
+            ))}
+          </ul>
+        ) : cell.error ? (
+          <p className="mt-auto text-[10px] text-rating-fair">{cell.error}</p>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

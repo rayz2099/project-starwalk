@@ -2,12 +2,15 @@ import { OPEN_METEO_BASE_URL, OPEN_METEO_REQUEST_TIMEOUT_MS } from "../constants
 import type { LocationConfig } from "../types";
 
 // Open-Meteo Forecast API hourly 字段（务必使用新字段名）
+// precipitation 进评分；precipitation_probability 仅展示
 const HOURLY_FIELDS = [
   "temperature_2m",
   "dew_point_2m",
   "cloud_cover",
   "cloud_cover_low",
-  "cloud_cover_high"
+  "cloud_cover_high",
+  "precipitation",
+  "precipitation_probability"
 ] as const;
 
 export interface OpenMeteoHourlyResponse {
@@ -18,6 +21,8 @@ export interface OpenMeteoHourlyResponse {
   cloud_cover: number[];
   cloud_cover_low: number[];
   cloud_cover_high: number[];
+  precipitation: number[];
+  precipitation_probability: number[];
 }
 
 export interface OpenMeteoFetchOk {

@@ -1,4 +1,4 @@
-import { RATING_THRESHOLDS, WINDOW_SCORING_THRESHOLDS } from "../constants";
+import { PRECIP_THRESHOLDS, RATING_THRESHOLDS, WINDOW_SCORING_THRESHOLDS } from "../constants";
 import type {
   BestObservationWindow,
   HourlyObservationSlot,
@@ -44,7 +44,11 @@ function buildSlot(
   );
   const temperature = hourly.temperature_2m[idx];
   const dewPointSpread = temperature - hourly.dew_point_2m[idx];
-  const score = computeSlotScore({
+  const precipitationMm = hourly.precipitation[idx] ?? 0;
+  const precipitationProbability = hourly.precipitation_probability[idx] ?? 0;
+  // 实质降水小时直接剔除，why：湿段不应进入 best window 候选
+  const wetKilled = precipitationMm > PRECIP_THRESHOLDS.windowKillMm;
+  const baseScore = computeSlotScore({
     cloudCover: hourly.cloud_cover[idx],
     cloudCoverLow: hourly.cloud_cover_low[idx],
     cloudCoverHigh: hourly.cloud_cover_high[idx],
@@ -61,11 +65,14 @@ function buildSlot(
     cloudCoverHigh: hourly.cloud_cover_high[idx],
     temperature,
     dewPointSpread,
+    precipitationMm,
+    precipitationProbability,
+    wetKilled,
     moonAltitudeDeg,
     moonIllumination: moon.illumination,
     moonAboveHorizon,
     moonlightImpact,
-    score
+    score: wetKilled ? 0 : baseScore
   };
 }
 
@@ -131,6 +138,8 @@ function findBestWindow(slots: HourlyObservationSlot[]): BestObservationWindow |
 }
 
 function isCandidate(slots: HourlyObservationSlot[]): boolean {
+  // 湿小时打断连续段，why：观星窗口必须是干段
+  if (slots.some((slot) => slot.wetKilled)) return false;
   if (slots.some((slot) => slot.score < WINDOW_SCORING_THRESHOLDS.minCandidateScore)) return false;
   return avg(slots.map((slot) => slot.cloudCover)) <= WINDOW_SCORING_THRESHOLDS.maxCandidateCloudAvg;
 }

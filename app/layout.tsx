@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 // 浏览器 UI（地址栏 / 状态栏）颜色随系统主题
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0d18" }
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e10" }
   ]
 };
 

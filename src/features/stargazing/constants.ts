@@ -12,6 +12,18 @@ export const RATING_THRESHOLDS = {
   dewPointSpreadFair: 2 // °C
 } as const;
 
+// 降水阈值：why 偏松对齐“找可用时段”，避免梅雨季矩阵全红
+export const PRECIP_THRESHOLDS = {
+  // 夜间合计超过该值 → hard gate POOR
+  hardGateSumMm: 5.0,
+  // 单小时超过该值 → 踢出候选窗口
+  windowKillMm: 0.5,
+  // soft risk 区间下沿：有可感知湿气但不足以判死
+  softRiskMinMm: 0.2,
+  // 湿小时 soft risk 下沿
+  wetHourSoftMinMm: 0.1
+} as const;
+
 // 最佳观测窗口阈值，why：满月不应直接判死，关键是能否找到连续低云低月光时段
 export const WINDOW_SCORING_THRESHOLDS = {
   minCandidateScore: 45,
@@ -35,6 +47,12 @@ export const LIGHT_POLLUTION_THRESHOLDS = {
 export const DEFAULT_DATE_RANGE_DAYS = 4;
 // 上限
 export const MAX_DATE_RANGE_DAYS = 14;
+
+// 单次查询地点上限，why：保护 Open-Meteo fan-out 与矩阵可读宽度
+export const MAX_SELECTED_LOCATIONS = 16;
+
+// 默认只勾近场组，why：远点长线不应污染周末对比首屏
+export const DEFAULT_LOCATION_GROUP_ID = "jiangzhe" as const;
 
 // Open-Meteo 调用上限，用于服务端守护
 export const OPEN_METEO_REQUEST_TIMEOUT_MS = 8000;

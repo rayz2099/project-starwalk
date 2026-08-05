@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { addDays, format } from "date-fns";
-import { CalendarIcon, Loader2, MapPin, Pin, Search, Sparkles, X } from "lucide-react";
+import { CalendarIcon, Loader2, MapPin, Pin, Search, X } from "lucide-react";
 import { searchLocationsAction } from "@app/actions";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LOCATION_GROUPS, LOCATIONS } from "@/config/locations";
-import { MAX_DATE_RANGE_DAYS } from "@/features/stargazing/constants";
+import { MAX_DATE_RANGE_DAYS, MAX_SELECTED_LOCATIONS } from "@/features/stargazing/constants";
 import { getLightPollutionSummary, getLightPollutionTier } from "@/features/stargazing/light-pollution";
 import { cn } from "@/lib/utils";
 import type { LocationConfig } from "../types";
@@ -51,7 +51,11 @@ const LOCATIONS_BY_GROUP = LOCATION_GROUPS.map((group) => ({
   locations: LOCATIONS.filter((location) => location.groupId === group.id)
 }));
 
-// 统一处理本组全选, why: 避免多处分散写 Set 合并逻辑
+const JIANGZHE_LOCATION_IDS = LOCATIONS.filter((location) => location.groupId === "jiangzhe").map(
+  (location) => location.id
+);
+
+// 统一合并 id，why：禁止静默截断，超限由提交校验/UI 硬顶拦截
 function addLocationIds(current: string[], nextIds: string[]): string[] {
   return Array.from(new Set([...current, ...nextIds]));
 }
@@ -106,7 +110,9 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
   const overflow = days > MAX_DATE_RANGE_DAYS;
   const noLocation = locationIds.length === 0;
   const noRange = !range?.from || !range?.to;
-  const allDefaultSelected = LOCATIONS.every((location) => locationIds.includes(location.id));
+  const locationOverflow = locationIds.length > MAX_SELECTED_LOCATIONS;
+  const atLocationCap = locationIds.length >= MAX_SELECTED_LOCATIONS;
+  const allJiangzheSelected = JIANGZHE_LOCATION_IDS.every((id) => locationIds.includes(id));
   const searchKey = normalizeSearch(query);
   const selectedIdSet = useMemo(() => new Set(locationIds), [locationIds]);
 
@@ -138,6 +144,8 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
 
   function submit() {
     if (!range?.from || !range?.to) return;
+    if (locationIds.length === 0) return;
+    if (locationIds.length > MAX_SELECTED_LOCATIONS) return;
     onSubmit({
       startDate: toYmd(range.from),
       endDate: toYmd(range.to),
@@ -165,8 +173,20 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
   }
 
   function pinLocation(location: LocationConfig) {
-    setCustomLocations((current) => addLocationObjects(current, [location]));
+    if (locationIds.includes(location.id)) return;
+    if (locationIds.length >= MAX_SELECTED_LOCATIONS) return;
+    setCustomLocations((customs) => addLocationObjects(customs, [location]));
     setLocationIds((current) => addLocationIds(current, [location.id]));
+  }
+
+  function toggleLocation(id: string, checked: boolean) {
+    setLocationIds((current) => {
+      if (checked) {
+        if (current.includes(id) || current.length >= MAX_SELECTED_LOCATIONS) return current;
+        return addLocationIds(current, [id]);
+      }
+      return removeLocationIds(current, [id]);
+    });
   }
 
   return (
@@ -234,7 +254,7 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
               <Pin className="h-3 w-3" /> 固定地点
             </span>
             <span className="text-xs tabular-nums text-muted-foreground">
-              {selectedLocations.length}
+              {selectedLocations.length}/{MAX_SELECTED_LOCATIONS}
             </span>
           </div>
 
@@ -262,6 +282,11 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
           {noLocation ? (
             <span className="mt-3 block text-xs text-rating-poor">至少选择一个地点</span>
           ) : null}
+          {locationOverflow || atLocationCap ? (
+            <span className="mt-2 block text-xs text-rating-fair">
+              单次最多 {MAX_SELECTED_LOCATIONS} 个地点，超限将拒绝提交
+            </span>
+          ) : null}
         </div>
       </aside>
 
@@ -272,7 +297,7 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
               <MapPin className="h-3 w-3" /> 观测地点
             </span>
             <p className="mt-1 text-sm text-muted-foreground">
-              输入全国地址或城市名, 搜索后固定到矩阵；下方默认地点仍可作为快捷候选。
+              默认近场江浙；川西/神农架手动勾选。单次地点有硬顶，超限拒绝提交。
             </p>
           </div>
           <button
@@ -280,13 +305,13 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
             className="self-start rounded-full border border-border/80 px-3 py-1.5 text-xs text-primary transition-colors hover:border-primary/60 hover:bg-primary/10 sm:self-auto"
             onClick={() =>
               setLocationIds((current) =>
-                allDefaultSelected
-                  ? removeLocationIds(current, LOCATIONS.map((location) => location.id))
-                  : addLocationIds(current, LOCATIONS.map((location) => location.id))
+                allJiangzheSelected
+                  ? removeLocationIds(current, JIANGZHE_LOCATION_IDS)
+                  : addLocationIds(current, JIANGZHE_LOCATION_IDS)
               )
             }
           >
-            {allDefaultSelected ? "取消默认点" : "全选默认点"}
+            {allJiangzheSelected ? "取消江浙默认" : "勾选江浙默认"}
           </button>
         </div>
 
@@ -382,11 +407,15 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
                       type="button"
                       className="shrink-0 rounded-full px-2 py-1 text-xs text-primary hover:bg-primary/10"
                       onClick={() =>
-                        setLocationIds((current) =>
-                          allGroupSelected
-                            ? removeLocationIds(current, groupLocationIds)
-                            : addLocationIds(current, groupLocationIds)
-                        )
+                        setLocationIds((current) => {
+                          if (allGroupSelected) {
+                            return removeLocationIds(current, groupLocationIds);
+                          }
+                          const merged = addLocationIds(current, groupLocationIds);
+                          // 整组加会超顶则拒绝，why：禁止静默截半组
+                          if (merged.length > MAX_SELECTED_LOCATIONS) return current;
+                          return merged;
+                        })
                       }
                     >
                       {allGroupSelected ? "清空本组" : "固定本组"}
@@ -408,12 +437,9 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
                         >
                           <Checkbox
                             checked={checked}
+                            disabled={!checked && atLocationCap}
                             onCheckedChange={(checkedValue) => {
-                              setLocationIds((current) =>
-                                checkedValue
-                                  ? addLocationIds(current, [location.id])
-                                  : removeLocationIds(current, [location.id])
-                              );
+                              toggleLocation(location.id, Boolean(checkedValue));
                             }}
                           />
                           <span className="min-w-0 flex-1">
@@ -444,11 +470,11 @@ export function ControlPanel({ value, loading, onSubmit }: ControlPanelProps) {
           <div className="mt-4 flex items-center justify-end border-t border-border/60 pt-4">
             <Button
               size="lg"
-              disabled={loading || overflow || noLocation || noRange}
+              disabled={loading || overflow || noLocation || noRange || locationOverflow}
               onClick={submit}
               className="min-h-11 w-full rounded-xl sm:w-auto sm:min-w-[150px]"
             >
-              <Sparkles className="h-4 w-4" />
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
               {loading ? "计算中..." : "刷新矩阵"}
             </Button>
           </div>

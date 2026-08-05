@@ -27,16 +27,16 @@ function formatShortDate(d: string): string {
 function lightPollutionTextClass(bortle: number | undefined): string {
   const tier = getLightPollutionTier(bortle);
   if (tier === "unknown") return "text-muted-foreground";
-  if (tier === "dark") return "text-emerald-500 dark:text-emerald-300";
-  if (tier === "moderate") return "text-amber-600 dark:text-amber-300";
-  return "text-rose-600 dark:text-rose-300";
+  if (tier === "dark") return "text-emerald-600 dark:text-emerald-400";
+  if (tier === "moderate") return "text-amber-600 dark:text-amber-400";
+  return "text-rose-600 dark:text-rose-400";
 }
 
 function levelTextClass(level: string | undefined): string {
-  if (level === "EXCELLENT") return "text-rating-excellent";
-  if (level === "FAIR") return "text-rating-fair";
-  if (level === "POOR") return "text-rating-poor";
-  return "text-muted-foreground";
+  if (level === "EXCELLENT") return "text-rating-excellent border-rating-excellent/30 bg-rating-excellent/10";
+  if (level === "FAIR") return "text-rating-fair border-rating-fair/30 bg-rating-fair/10";
+  if (level === "POOR") return "text-rating-poor border-rating-poor/30 bg-rating-poor/10";
+  return "text-muted-foreground border-border bg-muted/40";
 }
 
 // 每行摘要服务移动端标题, why: 手机屏幕先给结论, 细节再往下看
@@ -50,21 +50,21 @@ function summarizeCells(cells: MatrixCell[]): string {
 
 function LocationMeta({ location, fetchError }: { location: LocationConfig; fetchError?: string }) {
   return (
-    <div className="flex flex-col">
-      <span className="font-medium leading-tight">{location.name}</span>
-      <span className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+    <div className="flex flex-col gap-1">
+      <span className="font-medium leading-tight tracking-tight">{location.name}</span>
+      <span className="text-[11px] tabular-nums text-muted-foreground">
         {location.latitude.toFixed(2)}, {location.longitude.toFixed(2)} · {location.elevation}m
       </span>
       <span
         className={cn(
-          "mt-1 text-[11px] font-medium tabular-nums",
+          "text-[11px] font-medium tabular-nums",
           lightPollutionTextClass(location.lightPollutionBortle)
         )}
       >
-        光污染 {getLightPollutionSummary(location.lightPollutionBortle)}
+        {getLightPollutionSummary(location.lightPollutionBortle)}
       </span>
       {fetchError ? (
-        <span className="mt-1 text-[11px] text-rating-poor" title={fetchError}>
+        <span className="text-[11px] text-rating-poor" title={fetchError}>
           数据拉取失败
         </span>
       ) : null}
@@ -74,11 +74,15 @@ function LocationMeta({ location, fetchError }: { location: LocationConfig; fetc
 
 export function PlannerMatrixView({ matrix }: Props) {
   // 表头月相：取第一个非空地点该日的 moon 信息（同日不同地点差异极小）
-  const moonByDate = new Map<string, { icon: string; illumination: number }>();
+  // 用 phaseLabel 而非 emoji，why：design-taste 禁 emoji，文本更稳
+  const moonByDate = new Map<string, { label: string; illumination: number }>();
   for (const row of matrix.rows) {
     for (const cell of row.cells) {
       if (!moonByDate.has(cell.businessDate)) {
-        moonByDate.set(cell.businessDate, { icon: cell.moon.phaseIcon, illumination: cell.moon.illumination });
+        moonByDate.set(cell.businessDate, {
+          label: cell.moon.phaseLabel,
+          illumination: cell.moon.illumination
+        });
       }
     }
   }
@@ -91,10 +95,10 @@ export function PlannerMatrixView({ matrix }: Props) {
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <Table className="min-w-[980px] border-separate border-spacing-y-1">
+        <Table className="min-w-[980px] border-separate border-spacing-y-1.5">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="sticky left-0 z-10 w-[230px] rounded-l-xl bg-card/90 text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
+              <TableHead className="sticky left-0 z-10 w-[240px] rounded-xl bg-card text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 地点 / 日期
               </TableHead>
               {matrix.dates.map((date) => {
@@ -103,15 +107,15 @@ export function PlannerMatrixView({ matrix }: Props) {
                 return (
                   <TableHead
                     key={date}
-                    className="min-w-[210px] bg-card/70 text-left backdrop-blur first:rounded-l-xl last:rounded-r-xl"
+                    className="min-w-[220px] rounded-xl bg-card/80 text-left"
                   >
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-semibold tabular-nums text-foreground">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold tabular-nums tracking-tight text-foreground">
                         {formatDateHeader(date)}
                       </span>
                       {moon ? (
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {moon.icon} {illumination}%
+                        <span className="text-[11px] tabular-nums text-muted-foreground">
+                          {moon.label} · {illumination}%
                         </span>
                       ) : null}
                     </div>
@@ -126,18 +130,23 @@ export function PlannerMatrixView({ matrix }: Props) {
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={matrix.dates.length + 1}
-                    className="border-y border-border/60 bg-background/25 py-2"
+                    className="border-y border-border/50 bg-muted/30 py-2.5"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-foreground">{group.label}</span>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-sm font-semibold tracking-tight text-foreground">
+                        {group.label}
+                      </span>
                       <span className="text-xs text-muted-foreground">{group.description}</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                        {rows.length} 点
+                      </span>
                     </div>
                   </TableCell>
                 </TableRow>
 
                 {rows.map((row) => (
                   <TableRow key={row.location.id} className="hover:bg-transparent">
-                    <TableCell className="sticky left-0 z-10 rounded-l-xl bg-card/90 align-top backdrop-blur">
+                    <TableCell className="sticky left-0 z-10 rounded-xl bg-card align-top">
                       <LocationMeta location={row.location} fetchError={row.fetchError} />
                     </TableCell>
                     {row.cells.map((cell) => (
@@ -156,17 +165,17 @@ export function PlannerMatrixView({ matrix }: Props) {
       <div className="space-y-4 md:hidden">
         {rowsByGroup.map(({ group, rows }) => (
           <section key={group.id} className="space-y-3">
-            <div className="rounded-2xl border border-border/70 bg-background/45 px-4 py-3">
-              <p className="text-sm font-semibold text-foreground">{group.label}</p>
+            <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+              <p className="text-sm font-semibold tracking-tight text-foreground">{group.label}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{group.description}</p>
             </div>
 
             {rows.map((row) => (
               <article
                 key={row.location.id}
-                className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-sm"
+                className="overflow-hidden rounded-2xl border border-border/60 bg-card"
               >
-                <div className="flex items-start justify-between gap-3 border-b border-border/60 bg-background/35 p-4">
+                <div className="flex items-start justify-between gap-3 border-b border-border/50 bg-muted/20 p-4">
                   <LocationMeta location={row.location} fetchError={row.fetchError} />
                   <span
                     className={cn(
@@ -189,7 +198,7 @@ export function PlannerMatrixView({ matrix }: Props) {
                           </span>
                           {moon ? (
                             <span className="tabular-nums text-muted-foreground">
-                              {moon.icon} {Math.round(moon.illumination * 100)}%
+                              {moon.label} · {Math.round(moon.illumination * 100)}%
                             </span>
                           ) : null}
                         </div>

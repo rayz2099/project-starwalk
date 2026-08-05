@@ -1,4 +1,9 @@
-import { LIGHT_POLLUTION_THRESHOLDS, RATING_THRESHOLDS, WINDOW_SCORING_THRESHOLDS } from "../constants";
+import {
+  LIGHT_POLLUTION_THRESHOLDS,
+  PRECIP_THRESHOLDS,
+  RATING_THRESHOLDS,
+  WINDOW_SCORING_THRESHOLDS
+} from "../constants";
 import { getLightPollutionSummary } from "../light-pollution";
 import type {
   BestObservationWindow,
@@ -9,8 +14,8 @@ import type {
   RatingResult
 } from "../types";
 
-// 评分纯函数：先看最佳连续窗口，再叠加地点长期光污染修正
-// why：满月不代表整夜不可观测，月落后窗口可能仍然适合观星
+// 评分流水线：hard gate → bestWindow → 光污染；降水概率只展示不进 level
+// why：满月不代表整夜不可观测，但实质整夜降水应直接熔断
 export function scoreNight(
   agg: NightlyAggregation,
   moon: MoonInfo,
@@ -18,7 +23,22 @@ export function scoreNight(
   analysis: NightlyWindowAnalysis
 ): RatingResult {
   const risks = collectRisks(agg, moon, lightPollutionBortle, analysis.bestWindow);
+
+  // 1) hard gate：整夜合计实质降水
+  if (
+    Number.isFinite(agg.precipitationSumMm) &&
+    agg.precipitationSumMm > PRECIP_THRESHOLDS.hardGateSumMm
+  ) {
+    return {
+      level: "POOR",
+      reason: `夜间合计降水 ${agg.precipitationSumMm.toFixed(1)} mm，实质降雨`,
+      risks
+    };
+  }
+
+  // 2-3) 湿小时已在 window-analysis 剔除，这里只评 bestWindow
   const base = scoreBestWindow(analysis.bestWindow, risks);
+  // 4) 光污染有限降级；不可救回 hard gate POOR（hard gate 已提前返回）
   return applyLightPollutionPenalty(base, lightPollutionBortle);
 }
 
@@ -45,6 +65,23 @@ function collectRisks(
   if (lightPollutionBortle !== undefined && lightPollutionBortle > LIGHT_POLLUTION_THRESHOLDS.darkSkyMax) {
     risks.push(`光污染基线 ${getLightPollutionSummary(lightPollutionBortle)}`);
   }
+
+  // 5) soft risk：零星降水/湿气，不改 level
+  if (
+    Number.isFinite(agg.precipitationSumMm) &&
+    agg.precipitationSumMm > PRECIP_THRESHOLDS.softRiskMinMm &&
+    agg.precipitationSumMm <= PRECIP_THRESHOLDS.hardGateSumMm
+  ) {
+    risks.push(`夜间零星降水合计 ${agg.precipitationSumMm.toFixed(1)} mm，设备注意防潮`);
+  } else if (agg.wetHourCount > 0 && Number.isFinite(agg.precipitationMaxMm)) {
+    if (
+      agg.precipitationMaxMm > PRECIP_THRESHOLDS.wetHourSoftMinMm &&
+      agg.precipitationMaxMm <= PRECIP_THRESHOLDS.windowKillMm
+    ) {
+      risks.push(`存在毛毛雨湿小时 (峰值 ${agg.precipitationMaxMm.toFixed(1)} mm/h)`);
+    }
+  }
+
   return risks;
 }
 
@@ -53,7 +90,7 @@ function scoreBestWindow(bestWindow: BestObservationWindow | null, risks: string
   if (!bestWindow) {
     return {
       level: "POOR",
-      reason: `无连续 ${WINDOW_SCORING_THRESHOLDS.minCandidateHours}h 可观测窗口`,
+      reason: `无连续 ${WINDOW_SCORING_THRESHOLDS.minCandidateHours}h 可观测干窗`,
       risks
     };
   }
@@ -97,18 +134,24 @@ function applyLightPollutionPenalty(
   if (lightPollutionBortle === undefined) {
     return {
       ...base,
-      risks: [...base.risks, "搜索地点未配置光污染基线，评分未叠加 Bortle 修正"]
+      risks: [...base.risks, "光污染未标定，评分仅基于天气与月相"]
     };
   }
 
   const summary = getLightPollutionSummary(lightPollutionBortle);
 
-  if (lightPollutionBortle >= LIGHT_POLLUTION_THRESHOLDS.forcePoorMin && base.level === "EXCELLENT") {
-    return {
-      ...base,
-      level: "FAIR",
-      reason: `窗口可用，但光污染限制暗弱目标 (${summary})`
-    };
+  if (lightPollutionBortle >= LIGHT_POLLUTION_THRESHOLDS.forcePoorMin) {
+    if (base.level === "EXCELLENT" || base.level === "FAIR") {
+      return {
+        ...base,
+        level: base.level === "EXCELLENT" ? "FAIR" : base.level,
+        reason:
+          base.level === "EXCELLENT"
+            ? `天气窗口可用，但光污染过重限制暗空目标 (${summary})`
+            : base.reason,
+        risks: base.risks
+      };
+    }
   }
 
   if (lightPollutionBortle === LIGHT_POLLUTION_THRESHOLDS.downgradeMax && base.level === "EXCELLENT") {
